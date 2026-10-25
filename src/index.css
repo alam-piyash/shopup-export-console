@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: 246 247 249;
+  --surface: 255 255 255;
+  --raised: 241 243 246;
+  --line: 226 229 234;
+  --fg: 17 20 26;
+  --mut: 104 112 125;
+  --accent: 47 102 235;
+  --accent-fg: 255 255 255;
+  --ok: 22 150 95;
+  --warn: 196 128 14;
+  --bad: 214 60 60;
+  --info: 64 110 230;
+  color-scheme: light;
+}
+.dark {
+  --bg: 11 13 17;
+  --surface: 18 21 27;
+  --raised: 25 29 37;
+  --line: 36 41 51;
+  --fg: 232 235 240;
+  --mut: 136 145 160;
+  --accent: 91 140 255;
+  --accent-fg: 8 12 20;
+  --ok: 61 214 140;
+  --warn: 240 180 70;
+  --bad: 245 106 106;
+  --info: 120 160 255;
+  color-scheme: dark;
+}
+
+@layer base {
+  html { font-size: 90%; }
+  html, body, #root { min-height: 100%; }
+  body {
+    @apply bg-bg text-fg font-sans antialiased;
+    font-size: 0.875rem;
+    font-feature-settings: "cv11", "ss01";
+  }
+  ::selection { background: rgb(var(--accent) / 0.3); }
+  input[type="number"]::-webkit-inner-spin-button { opacity: 0.4; }
+}
+
+/* components (outside @layer so dynamic class names are never purged) */
+  .num { font-family: "JetBrains Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .card { @apply rounded-xl border border-line bg-surface; }
+  .lbl { @apply text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-mut; }
+  .h1 { @apply text-[1.625rem] font-semibold tracking-tight leading-tight; }
+  .field {
+    @apply h-10 w-full rounded-lg border border-line bg-bg px-3 text-[0.875rem] text-fg outline-none transition
+      placeholder:text-mut/70 focus:border-accent focus:ring-2 focus:ring-accent/25 disabled:opacity-60;
+  }
+  textarea.field { @apply h-auto py-2; }
+  .btn {
+    @apply inline-flex h-10 select-none items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 text-[0.875rem] font-medium transition
+      disabled:pointer-events-none disabled:opacity-45 [&_svg]:size-4 [&_svg]:shrink-0;
+  }
+  .btn-primary { @apply bg-accent text-accent-fg hover:brightness-110 active:brightness-95 shadow-[0_1px_0_rgb(255_255_255/0.15)_inset]; }
+  .btn-outline { @apply border border-line bg-surface text-fg hover:bg-raised; }
+  .btn-ghost { @apply text-fg hover:bg-raised; }
+  .btn-danger { @apply bg-bad text-white hover:brightness-110; }
+  .btn-sm { @apply h-8 rounded-md px-3 text-[0.8125rem]; }
+  .btn-icon { @apply h-9 w-9 px-0; }
+  .chip { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[0.75rem] font-medium; }
+  .chip i { @apply inline-block size-1.5 rounded-full bg-current; }
+  .chip-ok { @apply bg-ok/10 text-ok; }
+  .chip-warn { @apply bg-warn/10 text-warn; }
+  .chip-bad { @apply bg-bad/10 text-bad; }
+  .chip-info { @apply bg-info/10 text-info; }
+  .chip-gray { @apply bg-mut/15 text-mut; }
+  .tbl { @apply w-full border-collapse text-left; }
+  .tbl th { @apply border-b border-line px-4 py-3 text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-mut; }
+  .tbl td { @apply border-b border-line/70 px-4 py-3 align-middle; }
+  .tbl tbody tr { @apply transition-colors; }
+  .tbl tbody tr:hover { @apply bg-raised/60; }
+  .tbl tbody tr:last-child td { @apply border-b-0; }
+  .sel { @apply flex cursor-pointer items-center gap-3 rounded-lg border border-line bg-bg px-3.5 py-3 transition hover:border-mut/50; }
+  .sel.on { @apply border-accent bg-accent/[0.06]; }
+  .sel input[type="checkbox"] { @apply size-4 accent-[rgb(var(--accent))]; }
+  .banner { @apply flex items-start gap-2.5 rounded-xl px-4 py-3 text-[0.8125rem]; }
+
+
+
+.scroll-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+.scroll-thin::-webkit-scrollbar-thumb { background: rgb(var(--line)); border-radius: 8px; }
+
+.glow {
+  background:
+    radial-gradient(600px 300px at 0% 0%, rgb(var(--accent) / 0.10), transparent 60%),
+    radial-gradient(500px 260px at 100% 0%, rgb(var(--ok) / 0.06), transparent 60%);
+}
