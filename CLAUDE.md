@@ -13,7 +13,7 @@ All accounts belong to alam.piiyash@gmail.com.
 
 | Piece | Where |
 | --- | --- |
-| Code | GitHub `piiyash-collab/shopup-export-console`, branch `main` |
+| Code | GitHub `alam-piyash/shopup-export-console`, branch `main` |
 | Frontend | React 18, Vite 5, TypeScript, Tailwind 3, TanStack Query, react-router 6 |
 | Database, auth, files | Supabase project `shopup-export` (ref `jnjpwsjyswnsrendjodn`, region ap-southeast-1) |
 | Hosting | Vercel project `shopup-export-console`, linked to the GitHub repo |
@@ -28,6 +28,12 @@ Lovable is retired. Never use the Lovable "ShopUp Export" project or Lovable Clo
 4. Open the preview URL and check the changed screens. Preview deploys use the same Supabase project, so do not create junk data there; use demo data or clean up after.
 5. Open a pull request into `main`, then merge. Vercel deploys `main` to production.
 6. Confirm the production deploy is Ready and the site loads.
+
+## Access for a new Claude session
+
+- Code: start the session with the GitHub repo `alam-piyash/shopup-export-console` connected, then push branches normally.
+- Database: the Supabase connector (account alam.piiyash@gmail.com) asks the user to approve `apply_migration`; if approval cannot reach the user, run the migration SQL in Supabase > SQL Editor and record it in `supabase_migrations.schema_migrations`.
+- Hosting: Vercel builds every push automatically. Check the deploy in Vercel > Deployments.
 
 ## Database changes
 

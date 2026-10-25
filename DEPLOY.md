@@ -7,7 +7,7 @@
 | Push to any branch except `main` | Vercel preview deploy (unique URL per branch and commit) |
 | Merge or push to `main` | Vercel production deploy at https://shopup-export-console.vercel.app |
 
-Nobody uploads files by hand. Vercel runs `npm run build` and serves `dist/` (see `vercel.json`).
+Nobody uploads files by hand. Vercel project: `alampiiyash-1378s-projects/shopup-export-console`, connected to GitHub `alam-piyash/shopup-export-console`. Vercel runs `npm run build` and serves `dist/` (see `vercel.json`).
 
 ## Environment variables (Vercel, all environments)
 
@@ -37,7 +37,7 @@ Supabase > Authentication:
 - URL Configuration > Site URL: `https://shopup-export-console.vercel.app`
 - URL Configuration > Redirect URLs:
   - `https://shopup-export-console.vercel.app/**`
-  - `https://shopup-export-console-*.vercel.app/**` (branch previews; check the exact preview host in Vercel and adjust if needed)
+  - `https://shopup-export-console-*-alampiiyash-1378s-projects.vercel.app/**` (branch previews)
   - `http://localhost:5173/**`
 
 ## Local development
