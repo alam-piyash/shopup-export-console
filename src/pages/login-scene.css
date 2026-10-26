@@ -41,7 +41,6 @@
 @keyframes lg-trolley{0%,12%{transform:translateX(0)}38%,62%{transform:translateX(150px)}88%,100%{transform:translateX(0)}}
 .lg-scene .lg-hoist{animation:lg-hoist 8s ease-in-out infinite}
 @keyframes lg-hoist{0%{transform:translateY(0)}6%,12%{transform:translateY(55px)}24%,38%{transform:translateY(0)}48%,56%{transform:translateY(80px)}68%,100%{transform:translateY(0)}}
-@media (prefers-reduced-motion:reduce){.lg-scene *{animation:none!important}.lg-scene .lg-ship{transform:translateX(700px)}}
 .lg-scene .lg-stars circle{fill:#fff;opacity:.55;animation:lg-tw 4s ease-in-out infinite}
 @keyframes lg-tw{50%{opacity:.12}}
 .lg-scene .lg-dots{opacity:.6}

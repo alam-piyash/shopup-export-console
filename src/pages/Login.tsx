@@ -62,7 +62,7 @@ export default function Login() {
           <div className="text-[10px] tracking-[0.14em] text-slate-400">INTERNAL</div>
         </div>
       </div>
-      <div className="absolute inset-x-4 top-24 z-10 rounded-2xl border border-slate-400/20 bg-[#0a1428]/60 p-7 shadow-[0_30px_80px_rgba(0,0,0,0.45)] backdrop-blur-md sm:inset-x-auto sm:left-[5vw] sm:top-[max(110px,22vh)] sm:w-[360px] lg:left-16">
+      <div className="absolute inset-x-4 top-24 z-10 rounded-2xl border border-slate-400/20 bg-[#0a1428]/60 p-7 shadow-[0_30px_80px_rgba(0,0,0,0.45)] backdrop-blur-md sm:inset-x-auto sm:left-[5vw] sm:top-[clamp(96px,16vh,170px)] sm:w-[360px] lg:left-16">
         <h1 className="text-[22px] font-semibold tracking-tight text-white">Sign in</h1>
         <p className="mt-1.5 text-[13.5px] leading-relaxed text-slate-400">Use your ShopUp Google account to continue.</p>
         {error && (
