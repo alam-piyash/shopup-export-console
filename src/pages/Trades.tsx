@@ -137,7 +137,7 @@ export default function Trades() {
                         <td>
                           <div className="flex items-center gap-3">
                             <Money bdt={t.exp_issued} usd={t.exp_issued_usd} />
-                            <Progress value={p} className="w-16" />
+                            <Progress value={p} className="w-16 shrink-0" />
                           </div>
                         </td>
                         <td><Money bdt={t.collected} usd={t.collected_usd} /></td>

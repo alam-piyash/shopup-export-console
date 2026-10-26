@@ -1,6 +1,5 @@
 @tailwind base;
 @tailwind components;
-@tailwind utilities;
 
 :root {
   --bg: 246 247 249;
@@ -93,3 +92,6 @@
     radial-gradient(600px 300px at 0% 0%, rgb(var(--accent) / 0.10), transparent 60%),
     radial-gradient(500px 260px at 100% 0%, rgb(var(--ok) / 0.06), transparent 60%);
 }
+
+/* utilities last so per-element classes (pl-9, h-8, etc.) override component defaults */
+@tailwind utilities;

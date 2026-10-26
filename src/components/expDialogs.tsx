@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { EXP_DOCS, rpc, useRefresh } from "@/lib/api";
+import { EXP_DOCS, rpc, useRefresh, useTrades } from "@/lib/api";
 import { bdt, errMsg, rateHint } from "@/lib/format";
 import type { Exp } from "@/lib/types";
-import { Button, Chip, Field, Grid, Input, Modal, Switch, cn } from "./ui";
+import { Button, Chip, Field, Grid, Input, Modal, Select, Switch, cn } from "./ui";
 
 type ShipFields = { shipment_id: string; exp_no: string; awb_no: string; flight_no: string; shipment_date: string };
 const SHIP: { key: keyof ShipFields; label: string; type?: string }[] = [
@@ -28,8 +28,17 @@ function ShipmentInputs({ value, onChange, advance }: { value: ShipFields; onCha
   );
 }
 
-export function AddExpDialog({ open, onOpenChange, tradeId, available, tolerance }: { open: boolean; onOpenChange: (o: boolean) => void; tradeId: string; available: number; tolerance?: number | string | null }) {
+export function AddExpDialog({ open, onOpenChange, tradeId: fixedTradeId, available: fixedAvailable, tolerance: fixedTolerance }: { open: boolean; onOpenChange: (o: boolean) => void; tradeId?: string; available?: number; tolerance?: number | string | null }) {
   const refresh = useRefresh();
+  const { data: allTrades } = useTrades();
+  const [pick, setPick] = useState("");
+  const activeTrades = (allTrades ?? [])
+    .filter((t) => t.status === "active")
+    .map((t) => ({ ...t, left: Number(t.contract_amount) - Number(t.exp_issued ?? 0) }));
+  const picked = activeTrades.find((t) => t.id === pick);
+  const tradeId = fixedTradeId ?? pick;
+  const available = fixedTradeId ? fixedAvailable ?? 0 : picked?.left ?? 0;
+  const tolerance = fixedTradeId ? fixedTolerance : picked?.tolerance_pct;
   const navigate = useNavigate();
   const [amount, setAmount] = useState("");
   const [amountUsd, setAmountUsd] = useState("");
@@ -38,7 +47,7 @@ export function AddExpDialog({ open, onOpenChange, tradeId, available, tolerance
   const [busy, setBusy] = useState(false);
   const n = Number(amount || 0);
   const over = n > available + 0.0001;
-  const valid = n > 0 && !over && (advance || ship.shipment_id.trim());
+  const valid = !!tradeId && n > 0 && !over && (advance || ship.shipment_id.trim());
   async function submit() {
     setBusy(true);
     try {
@@ -46,7 +55,7 @@ export function AddExpDialog({ open, onOpenChange, tradeId, available, tolerance
       toast.success("EXP added");
       refresh();
       onOpenChange(false);
-      setAmount(""); setAmountUsd(""); setShip(emptyShip()); setAdvance(false);
+      setAmount(""); setAmountUsd(""); setShip(emptyShip()); setAdvance(false); setPick("");
       navigate(`/exps/${id}`);
     } catch (e) {
       toast.error(errMsg(e));
@@ -69,6 +78,21 @@ export function AddExpDialog({ open, onOpenChange, tradeId, available, tolerance
       }
     >
       <div className="flex flex-col gap-4">
+        {!fixedTradeId && (
+          <Field
+            label="Trade / sales contract"
+            required
+            hint={activeTrades.length ? "Only approved (active) trades are listed." : "No active trades. A trade must be approved before EXPs can be added."}
+          >
+            <Select value={pick} onChange={(e) => setPick(e.target.value)} placeholder="Select a trade">
+              {activeTrades.map((t) => (
+                <option key={t.id} value={t.id} disabled={t.left <= 0}>
+                  {t.code} · SC {t.sales_contract_no} · {t.importer_name} · left {bdt(t.left)}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
         <Grid>
           <Field
             label="Amount (BDT)"
