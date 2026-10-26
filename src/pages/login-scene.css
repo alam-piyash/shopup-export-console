@@ -1,0 +1,57 @@
+/* Login page animated scene. Generated; classes prefixed lg- to avoid clashes. */
+.lg-scene{position:absolute;inset:0;width:100%;height:100%}
+.lg-scene *{box-sizing:border-box;margin:0}
+.lg-scene .lg-scene{position:absolute;inset:0;width:100%;height:100%}
+.lg-scene .lg-dots{fill:none;stroke:url(#land);stroke-width:2.5;stroke-linecap:round;opacity:.7}
+.lg-scene .lg-arcbase{fill:none;stroke:url(#arcg);stroke-opacity:.28;stroke-width:1.6}
+.lg-scene .lg-comet{fill:none;stroke:url(#arcg);stroke-width:3;stroke-linecap:round;stroke-dasharray:.15 1;stroke-dashoffset:.15;animation:lg-comet linear infinite;filter:drop-shadow(0 0 4px rgba(47,102,235,.55))}
+@keyframes lg-comet{to{stroke-dashoffset:-1}}
+.lg-scene .lg-head{fill:#fff;stroke:#2f66eb;stroke-width:2;filter:drop-shadow(0 0 5px rgba(47,102,235,.8))}
+.lg-scene .lg-lbl{font:600 11px Inter,sans-serif;fill:#334155;paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round}
+.lg-scene .lg-blob1{animation:lg-drift 18s ease-in-out infinite}
+.lg-scene .lg-blob2{animation:lg-drift 22s ease-in-out infinite reverse}
+@keyframes lg-drift{50%{transform:translate(-60px,30px)}}
+.lg-scene .lg-cl{animation:lg-cloud linear infinite}
+.lg-scene .lg-c1{animation-duration:90s}
+.lg-scene .lg-c2{animation-duration:120s;animation-delay:-60s}
+.lg-scene .lg-c3{animation-duration:140s;animation-delay:-30s}
+@keyframes lg-cloud{to{translate:1700px 0}}
+.lg-scene .lg-wv{animation:lg-wave linear infinite}
+.lg-scene .lg-w1{animation-duration:9s}
+.lg-scene .lg-w2{animation-duration:6.5s}
+.lg-scene .lg-w3{animation-duration:4.5s}
+@keyframes lg-wave{to{transform:translateX(-1440px)}}
+.lg-scene .lg-spark rect{fill:#fff;opacity:.7;animation:lg-spk 4s ease-in-out infinite}
+@keyframes lg-spk{50%{opacity:.1;transform:translateX(12px)}}
+.lg-scene .lg-truck{animation:lg-truck 14s linear infinite}
+@keyframes lg-truck{0%{transform:translateX(-80px)}100%{transform:translateX(480px)}}
+.lg-scene .lg-trav{fill:#2f66eb}
+.lg-scene .lg-pin{fill:#fff;stroke:#2f66eb;stroke-width:2.4}
+.lg-scene .lg-ping{fill:none;stroke:#2f66eb;stroke-width:1;transform-box:fill-box;transform-origin:center;animation:lg-ping 2.6s ease-out infinite}
+@keyframes lg-ping{0%{transform:scale(1);opacity:.7}100%{transform:scale(4.5);opacity:0}}
+.lg-scene .lg-beacon{fill:#ef4444;animation:lg-blink 1.4s steps(1) infinite}
+@keyframes lg-blink{50%{opacity:.2}}
+.lg-scene .lg-ship{animation:lg-sail 32s linear infinite}
+@keyframes lg-sail{0%{transform:translateX(470px);opacity:0}4%{opacity:1}92%{opacity:1}100%{transform:translateX(1500px);opacity:0}}
+.lg-scene .lg-bob{animation:lg-bob 3.5s ease-in-out infinite}
+@keyframes lg-bob{0%,100%{translate:0 0;rotate:0deg}25%{translate:0 3px;rotate:.8deg}75%{translate:0 -2px;rotate:-.8deg}}
+.lg-scene .lg-wake{animation:lg-wk 1.2s ease-in-out infinite}
+@keyframes lg-wk{50%{opacity:.3}}
+.lg-scene .lg-trolley{animation:lg-trolley 8s ease-in-out infinite}
+@keyframes lg-trolley{0%,12%{transform:translateX(0)}38%,62%{transform:translateX(150px)}88%,100%{transform:translateX(0)}}
+.lg-scene .lg-hoist{animation:lg-hoist 8s ease-in-out infinite}
+@keyframes lg-hoist{0%{transform:translateY(0)}6%,12%{transform:translateY(55px)}24%,38%{transform:translateY(0)}48%,56%{transform:translateY(80px)}68%,100%{transform:translateY(0)}}
+@media (prefers-reduced-motion:reduce){.lg-scene *{animation:none!important}.lg-scene .lg-ship{transform:translateX(700px)}}
+.lg-scene .lg-stars circle{fill:#fff;opacity:.55;animation:lg-tw 4s ease-in-out infinite}
+@keyframes lg-tw{50%{opacity:.12}}
+.lg-scene .lg-dots{opacity:.6}
+.lg-scene .lg-arcbase{stroke-opacity:.35}
+.lg-scene .lg-comet{filter:drop-shadow(0 0 6px rgba(96,165,250,.9))}
+.lg-scene .lg-head{fill:#0b1324;stroke:#93c5fd;filter:drop-shadow(0 0 6px rgba(96,165,250,.9))}
+.lg-scene .lg-pin{fill:#0b1324;stroke:#60a5fa}
+.lg-scene .lg-ping{stroke:#60a5fa}
+.lg-scene .lg-lbl{fill:#cbd5e1;stroke:#050b18}
+.lg-scene .lg-spark rect{fill:#93c5fd;opacity:.3}
+.lg-scene .lg-ship{animation-duration:20s}
+.lg-scene .lg-wv path{stroke:#60a5fa;stroke-opacity:.28;stroke-width:1.5}
+.lg-scene .lg-bob{animation:lg-bob 2.6s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 100%}
