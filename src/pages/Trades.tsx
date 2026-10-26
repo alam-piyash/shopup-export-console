@@ -116,9 +116,9 @@ export default function Trades() {
         ) : (
           <>
             <div className="scroll-thin hidden overflow-x-auto md:block">
-              <table className="tbl min-w-[56.25rem]">
+              <table className="tbl min-w-[46rem]">
                 <thead>
-                  <tr>{["Trade", "Buyer", "Contract", "EXP issued", "Collected", "Status", ""].map((h) => <th key={h}>{h}</th>)}</tr>
+                  <tr>{["Trade", "Buyer", "Contract", "EXP issued", "Collected", "Status", ""].map((h) => <th key={h} className={h === "Collected" ? "hidden xl:table-cell" : undefined}>{h}</th>)}</tr>
                 </thead>
                 <tbody>
                   {shown.map((t) => {
@@ -129,22 +129,22 @@ export default function Trades() {
                           <div className="num font-medium">{t.code}</div>
                           <div className="text-[0.75rem] text-mut">SC {t.sales_contract_no} · {fmtDate(t.contract_date)}</div>
                         </td>
-                        <td className="max-w-[15rem]">
+                        <td className="max-w-[12rem]">
                           <div className="flex items-center gap-2 truncate font-medium">{t.importer_name}{t.is_demo && <Chip label="Demo" tone="gray" dot={false} />}</div>
                           <div className="truncate text-[0.75rem] text-mut">{t.importer_country} · {t.products}</div>
                         </td>
                         <td><Money bdt={t.contract_amount} usd={t.contract_amount_usd} /></td>
                         <td>
-                          <div className="flex items-center gap-3">
+                          <div className="flex w-28 flex-col gap-1.5">
                             <Money bdt={t.exp_issued} usd={t.exp_issued_usd} />
-                            <Progress value={p} className="w-16 shrink-0" />
+                            <Progress value={p} />
                           </div>
                         </td>
-                        <td><Money bdt={t.collected} usd={t.collected_usd} /></td>
+                        <td className="hidden xl:table-cell"><Money bdt={t.collected} usd={t.collected_usd} /></td>
                         <td><Chip status={t.status} /></td>
                         <td className="text-right">
                           <div className="inline-flex items-center justify-end gap-2">
-                            <TradeApprovals t={t} />
+                            <span className="hidden xl:contents"><TradeApprovals t={t} /></span>
                             <ChevronRight className="size-4 text-mut" />
                           </div>
                         </td>

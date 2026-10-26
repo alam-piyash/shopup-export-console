@@ -21,6 +21,8 @@ const Collections = lazy(() => import("@/pages/Collections"));
 const CollectionNew = lazy(() => import("@/pages/CollectionNew"));
 const Incentives = lazy(() => import("@/pages/Incentives"));
 const IncentiveNew = lazy(() => import("@/pages/IncentiveNew"));
+const CollectionDetail = lazy(() => import("@/pages/CollectionDetail"));
+const IncentiveDetail = lazy(() => import("@/pages/IncentiveDetail"));
 const Access = lazy(() => import("@/pages/Access"));
 
 function FullLoader() {
@@ -100,8 +102,10 @@ export default function App() {
       <Route path="/exps/:expId" element={<ExpDetail />} />
       <Route path="/collections" element={<Collections />} />
       <Route path="/collections/new" element={<CollectionNew />} />
+      <Route path="/collections/:collectionId" element={<CollectionDetail />} />
       <Route path="/incentives" element={<Incentives />} />
       <Route path="/incentives/new" element={<IncentiveNew />} />
+      <Route path="/incentives/:incentiveId" element={<IncentiveDetail />} />
       <Route path="/access" element={<AdminOnly><Access /></AdminOnly>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -97,7 +97,17 @@ export function FileField({ label, folder, value, onChange, required }: { label:
   );
 }
 
-export function AttachmentList({ entityId }: { entityId: string }) {
+export function FileActions({ path, name }: { path: string; name: string }) {
+  const btn = "inline-flex items-center gap-1 rounded-md border border-line bg-surface px-2 py-1 text-[0.75rem] font-medium text-fg transition hover:border-accent hover:text-accent";
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1.5">
+      <button type="button" className={btn} onClick={() => openFile(path).catch((e) => toast.error(errMsg(e)))}><Eye className="size-3.5" /> View</button>
+      <button type="button" className={btn} onClick={() => downloadFile(path, name).catch((e) => toast.error(errMsg(e)))}><Download className="size-3.5" /> Download</button>
+    </span>
+  );
+}
+
+export function AttachmentList({ entityId, expected }: { entityId: string; expected?: readonly string[] }) {
   const { data, isLoading } = useQuery({
     queryKey: ["attachments", entityId],
     queryFn: async () => {
@@ -106,16 +116,35 @@ export function AttachmentList({ entityId }: { entityId: string }) {
       return data as Attachment[];
     },
   });
-  if (isLoading) return <p className="text-[0.8125rem] text-mut">Loading files</p>;
-  if (!data?.length) return <p className="text-[0.8125rem] text-mut">No files.</p>;
+  if (isLoading) return <p className="px-4 py-3 text-[0.8125rem] text-mut">Loading files</p>;
+  const list = data ?? [];
+  const order = expected ? [...list].sort((a, b) => expected.indexOf(a.doc_type) - expected.indexOf(b.doc_type)) : list;
+  const missing = expected ? expected.filter((d) => !list.some((a) => a.doc_type === d)) : [];
+  if (!order.length && !missing.length) return <p className="px-4 py-3 text-[0.8125rem] text-mut">No files.</p>;
   return (
-    <ul className="divide-y divide-line/70 rounded-lg border border-line">
-      {data.map((a) => (
-        <li key={a.id} className="flex items-center justify-between gap-3 px-3 py-2">
-          <span className="shrink-0 text-[0.8125rem] text-mut">{a.doc_type}</span>
-          <span className="min-w-0">
-            <FileLink path={a.file_path} name={a.file_name} size={a.file_size} demo={a.is_demo} />
-          </span>
+    <ul className="divide-y divide-line/70">
+      {order.map((a, i) => {
+        const demo = a.is_demo || !a.file_path || a.file_path === "demo";
+        return (
+          <li key={a.id} className="grid grid-cols-1 items-center gap-x-4 gap-y-2 px-4 py-3 sm:grid-cols-[minmax(10rem,14rem)_minmax(0,1fr)_auto]">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="num w-5 shrink-0 text-[0.75rem] text-mut">{i + 1}.</span>
+              <span className="truncate text-[0.8438rem] font-medium">{a.doc_type}</span>
+            </div>
+            <div className="flex min-w-0 items-center gap-1.5 pl-7 text-[0.8125rem] sm:pl-0">
+              <FileText className="size-3.5 shrink-0 text-mut" />
+              <span className="truncate" title={a.file_name}>{demo ? "Demo file" : a.file_name}</span>
+              {a.file_size ? <span className="num shrink-0 text-[0.6875rem] text-mut">{fileSize(a.file_size)}</span> : null}
+            </div>
+            <div className="pl-7 sm:pl-0">{demo ? <span className="text-[0.75rem] text-mut">Not available</span> : <FileActions path={a.file_path} name={a.file_name} />}</div>
+          </li>
+        );
+      })}
+      {missing.map((d) => (
+        <li key={d} className="grid grid-cols-1 items-center gap-x-4 px-4 py-3 sm:grid-cols-[minmax(10rem,14rem)_minmax(0,1fr)_auto]">
+          <span className="truncate pl-7 text-[0.8438rem] font-medium">{d}</span>
+          <span className="pl-7 text-[0.8125rem] text-mut sm:pl-0">Missing</span>
+          <span />
         </li>
       ))}
     </ul>

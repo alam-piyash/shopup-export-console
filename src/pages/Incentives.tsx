@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ChevronRight, Coins, Download, Plus, Search } from "lucide-react";
-import { useDecide, useIncentives, useIsAdmin, useProfiles } from "@/lib/api";
+import { useDecide, useIncentives, useIsAdmin } from "@/lib/api";
 import { bdt, bdtShort, downloadCsv, fmtDate } from "@/lib/format";
 import type { Incentive } from "@/lib/types";
-import { ApproveReject, Button, Chip, Empty, Input, Kpi, KpiGrid, LoadingRows, Modal, Money, PageHeader, Panel, Row, Segments } from "@/components/ui";
+import { ApproveReject, Button, Chip, Empty, Input, Kpi, KpiGrid, LoadingRows, Money, PageHeader, Panel, Row, Segments } from "@/components/ui";
 import { AttachmentList } from "@/components/files";
 
 type Filter = "all" | "pending_approval" | "approved" | "rejected";
@@ -14,17 +14,15 @@ export default function Incentives() {
   const [params, setParams] = useSearchParams();
   const filter = (params.get("status") as Filter) || "all";
   const setFilter = (f: Filter) => setParams(f === "all" ? {} : { status: f }, { replace: true });
-  const [openId, setOpenId] = useState<string | null>(null);
+  const navigate = useNavigate();
   const [q, setQ] = useState("");
   const { data, isLoading } = useIncentives();
   const decide = useDecide("incentive");
-  const profiles = useProfiles().data ?? {};
   const rows = data ?? [];
   const count = (s: string) => rows.filter((r) => r.status === s).length;
   const tradesOf = (r: Incentive) => [...new Set(r.incentive_exps.map((e) => e.exps?.trades?.code))].join(", ");
   const actions = (r: Incentive) =>
     isAdmin && r.status === "pending_approval" ? <ApproveReject label={r.code} onApprove={() => decide(r.id, true)} onReject={(reason) => decide(r.id, false, reason)} /> : null;
-  const open = rows.find((r) => r.id === openId);
   const sumBy = (st: string) => rows.filter((r) => r.status === st).reduce((x, r) => x + Number(r.incentive_amount ?? 0), 0);
   const ql = q.toLowerCase();
   const visible = rows.filter((r) => (filter === "all" || r.status === filter) && (!q || [r.code, tradesOf(r), ...r.incentive_exps.map((e) => e.exps?.code)].some((v) => v?.toLowerCase().includes(ql))));
@@ -70,20 +68,20 @@ export default function Incentives() {
         ) : (
           <>
             <div className="scroll-thin hidden overflow-x-auto md:block">
-              <table className="tbl min-w-[56.25rem]">
-                <thead><tr>{["Code", "Trades", "EXP amount", "FOB", "Rate", "Incentive", "Date", "Status", ""].map((h) => <th key={h}>{h}</th>)}</tr></thead>
+              <table className="tbl min-w-[46rem]">
+                <thead><tr>{["Code", "Trades", "EXP amount", "FOB", "Rate", "Incentive", "Date", "Status", ""].map((h) => <th key={h} className={h === "EXP amount" ? "hidden xl:table-cell" : undefined}>{h}</th>)}</tr></thead>
                 <tbody>
                   {visible.map((r) => (
-                    <tr key={r.id} className="cursor-pointer" onClick={() => setOpenId(r.id)}>
+                    <tr key={r.id} className="cursor-pointer" onClick={() => navigate(`/incentives/${r.id}`)}>
                       <td className="num font-medium">{r.code}</td>
                       <td className="num text-[0.7812rem]">{tradesOf(r)}</td>
-                      <td className="num">{bdt(r.exp_amount)}</td>
+                      <td className="hidden xl:table-cell num">{bdt(r.exp_amount)}</td>
                       <td className="num">{bdt(r.fob)}</td>
                       <td className="num">{Number(r.incentive_pct)}%</td>
                       <td className="num font-semibold">{bdt(r.incentive_amount)}</td>
                       <td className="num text-mut">{fmtDate(r.created_at)}</td>
                       <td><Chip status={r.status} /></td>
-                      <td className="text-right"><div className="inline-flex items-center gap-2">{actions(r)}<ChevronRight className="size-4 text-mut" /></div></td>
+                      <td className="text-right"><div className="inline-flex items-center gap-2"><span className="hidden xl:contents">{actions(r)}</span><ChevronRight className="size-4 text-mut" /></div></td>
                     </tr>
                   ))}
                 </tbody>
@@ -91,7 +89,7 @@ export default function Incentives() {
             </div>
             <div className="flex flex-col gap-2.5 p-3 md:hidden">
               {visible.map((r) => (
-                <div key={r.id} className="flex cursor-pointer flex-col gap-2 rounded-xl border border-line bg-bg p-4" onClick={() => setOpenId(r.id)}>
+                <div key={r.id} className="flex cursor-pointer flex-col gap-2 rounded-xl border border-line bg-bg p-4" onClick={() => navigate(`/incentives/${r.id}`)}>
                   <div className="flex items-center justify-between"><span className="num font-semibold">{r.code}</span><Chip status={r.status} /></div>
                   <div className="text-[0.75rem] text-mut">{tradesOf(r)} · FOB {bdt(r.fob)} at {Number(r.incentive_pct)}%</div>
                   <div className="num font-semibold">{bdt(r.incentive_amount)}</div>
@@ -102,32 +100,6 @@ export default function Incentives() {
           </>
         )}
       </Panel>
-      <Modal open={!!open} onOpenChange={(o) => !o && setOpenId(null)} title={<span className="num">{open?.code}</span>} description={open ? tradesOf(open) : undefined} footer={open && actions(open)}>
-        {open && (
-          <div>
-            <div className="mb-4 rounded-xl border border-line bg-bg p-4">
-              <Row label="EXP amount" value={<span className="num">{bdt(open.exp_amount)}</span>} />
-              <Row label="Net proceed" value={<Money bdt={open.net_proceed} usd={open.net_proceed_usd} align="end" />} />
-              <Row label="Freight" value={<Money bdt={open.freight} usd={open.freight_usd} align="end" />} />
-              <Row label="FOB" value={<span className="num">{bdt(open.fob)}</span>} />
-              <Row label="Incentive rate" value={<span className="num">{Number(open.incentive_pct)}%</span>} />
-              <div className="mt-2 flex items-baseline justify-between border-t border-line pt-3">
-                <span className="lbl">Incentive</span>
-                <span className="num text-[1.25rem] font-semibold">{bdt(open.incentive_amount)}</span>
-              </div>
-            </div>
-            <Row label="Submitted" value={`${open.is_demo ? "Demo" : profiles[open.created_by] ?? ""} · ${fmtDate(open.created_at)}`} />
-            <Row label="Status" value={<Chip status={open.status} />} />
-            {open.rejection_reason && <Row label="Reason" value={<span className="text-bad">{open.rejection_reason}</span>} />}
-            <div className="lbl mb-2 mt-5">EXPs</div>
-            <div className="rounded-lg border border-line px-3">
-              {open.incentive_exps.map((e) => <Row key={e.exps?.code} label={<span className="num">{e.exps?.code} · {e.exps?.trades?.code}</span>} value={<span className="num">{bdt(e.amount)}</span>} />)}
-            </div>
-            <div className="lbl mb-2 mt-5">Documents</div>
-            <AttachmentList entityId={open.id} />
-          </div>
-        )}
-      </Modal>
     </>
   );
 }

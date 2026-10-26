@@ -72,8 +72,11 @@
   .chip-info { @apply bg-info/10 text-info; }
   .chip-gray { @apply bg-mut/15 text-mut; }
   .tbl { @apply w-full border-collapse text-left; }
-  .tbl th { @apply border-b border-line px-4 py-3 text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-mut; }
-  .tbl td { @apply border-b border-line/70 px-4 py-3 align-middle; }
+  .tbl th { @apply border-b border-line px-3 py-3 text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-mut; }
+  .tbl td { @apply border-b border-line/70 px-3 py-3 align-middle whitespace-nowrap; }
+  .tbl th { white-space: nowrap; }
+  .tbl th:first-child, .tbl td:first-child { padding-left: 1rem; }
+  .tbl th:last-child, .tbl td:last-child { padding-right: 1rem; }
   .tbl tbody tr { @apply transition-colors; }
   .tbl tbody tr:hover { @apply bg-raised/60; }
   .tbl tbody tr:last-child td { @apply border-b-0; }

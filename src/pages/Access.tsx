@@ -80,9 +80,9 @@ export default function Access() {
   return (
     <>
       <PageHeader title="Access control" sub={`Everyone with a ${ALLOWED_DOMAIN} Google account gets Operation on first sign in. Pre-assign a role to change that.`} />
-      <div className="grid items-start gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <Panel title="Pre-assign a role">
-          <div className="grid grid-cols-1 items-end gap-3 p-5 sm:grid-cols-[1fr_1.3fr_160px_auto]">
+          <div className="grid grid-cols-1 items-end gap-3 p-5 sm:grid-cols-2 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_10rem_auto]">
             <Field label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} /></Field>
             <Field label="Email"><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={`name@${ALLOWED_DOMAIN}`} /></Field>
             <Field label="Role">
