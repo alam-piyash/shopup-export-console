@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeftRight, ChevronRight, Download, Plus, Search } from "lucide-react";
+import { ArrowLeftRight, Download, Plus, Search } from "lucide-react";
 import { useIsAdmin, useTradeActions, useTrades } from "@/lib/api";
 import { bdt, bdtShort, downloadCsv, fmtDate, pct } from "@/lib/format";
 import type { Trade } from "@/lib/types";
-import { ApproveReject, Button, Chip, Empty, Input, Kpi, KpiGrid, LoadingRows, Money, PageHeader, Panel, Progress, Segments } from "@/components/ui";
+import { ApproveReject, Button, Chip, Empty, Input, Kpi, KpiGrid, LoadingRows, Money, PageHeader, Panel, Segments, cn } from "@/components/ui";
+const RIGHT = new Set(["Contract", "EXP issued", "Issued", "Collected", "Amount", "Documents", "EXP amount", "FOB", "Rate", "Incentive"]);
 
 type Filter = "all" | "awaiting" | "active" | "revision_pending" | "closed" | "rejected";
 
@@ -118,7 +119,7 @@ export default function Trades() {
             <div className="scroll-thin hidden overflow-x-auto md:block">
               <table className="tbl min-w-[46rem]">
                 <thead>
-                  <tr>{["Trade", "Buyer", "Contract", "EXP issued", "Collected", "Status", ""].map((h) => <th key={h} className={h === "Collected" ? "hidden xl:table-cell" : undefined}>{h}</th>)}</tr>
+                  <tr>{["Trade", "Buyer", "Contract", "EXP issued", "Issued", "Collected", "Status", ""].map((h) => <th key={h} className={cn(RIGHT.has(h) && "r", h === "Collected" && "hidden xl:table-cell")}>{h}</th>)}</tr>
                 </thead>
                 <tbody>
                   {shown.map((t) => {
@@ -133,19 +134,14 @@ export default function Trades() {
                           <div className="flex items-center gap-2 truncate font-medium">{t.importer_name}{t.is_demo && <Chip label="Demo" tone="gray" dot={false} />}</div>
                           <div className="truncate text-[0.75rem] text-mut">{t.importer_country} · {t.products}</div>
                         </td>
-                        <td><Money bdt={t.contract_amount} usd={t.contract_amount_usd} /></td>
-                        <td>
-                          <div className="flex w-28 flex-col gap-1.5">
-                            <Money bdt={t.exp_issued} usd={t.exp_issued_usd} />
-                            <Progress value={p} />
-                          </div>
-                        </td>
-                        <td className="hidden xl:table-cell"><Money bdt={t.collected} usd={t.collected_usd} /></td>
+                        <td className="r"><Money bdt={t.contract_amount} usd={t.contract_amount_usd} align="end" /></td>
+                        <td className="r"><Money bdt={t.exp_issued} usd={t.exp_issued_usd} align="end" /></td>
+                        <td className="r num">{p}%</td>
+                        <td className="r hidden xl:table-cell"><Money bdt={t.collected} usd={t.collected_usd} align="end" /></td>
                         <td><Chip status={t.status} /></td>
                         <td className="text-right">
                           <div className="inline-flex items-center justify-end gap-2">
                             <span className="hidden xl:contents"><TradeApprovals t={t} /></span>
-                            <ChevronRight className="size-4 text-mut" />
                           </div>
                         </td>
                       </tr>
@@ -165,7 +161,7 @@ export default function Trades() {
                     <div className="truncate font-medium">{t.importer_name}</div>
                     <div className="truncate text-[0.75rem] text-mut">{t.products}</div>
                   </div>
-                  <Progress value={pct(t.exp_issued, t.contract_amount)} />
+                  <div className="text-[0.75rem] text-mut"><span className="num">{pct(t.exp_issued, t.contract_amount)}%</span> of contract issued as EXP</div>
                   <div className="grid grid-cols-3 gap-2 text-[0.8125rem]">
                     <div><div className="lbl">Contract</div><span className="num">{bdtShort(t.contract_amount)}</span></div>
                     <div><div className="lbl">EXP</div><span className="num">{bdtShort(t.exp_issued)}</span></div>

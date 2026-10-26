@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ChevronRight, Coins, Download, Plus, Search } from "lucide-react";
+import { Coins, Download, Plus, Search } from "lucide-react";
 import { useDecide, useIncentives, useIsAdmin } from "@/lib/api";
 import { bdt, bdtShort, downloadCsv, fmtDate } from "@/lib/format";
 import type { Incentive } from "@/lib/types";
-import { ApproveReject, Button, Chip, Empty, Input, Kpi, KpiGrid, LoadingRows, Money, PageHeader, Panel, Row, Segments } from "@/components/ui";
+import { ApproveReject, Button, Chip, Empty, Input, Kpi, KpiGrid, LoadingRows, Money, PageHeader, Panel, Row, Segments, cn } from "@/components/ui";
 import { AttachmentList } from "@/components/files";
+const RIGHT = new Set(["Contract", "EXP issued", "Issued", "Collected", "Amount", "Documents", "EXP amount", "FOB", "Rate", "Incentive"]);
 
 type Filter = "all" | "pending_approval" | "approved" | "rejected";
 
@@ -69,19 +70,19 @@ export default function Incentives() {
           <>
             <div className="scroll-thin hidden overflow-x-auto md:block">
               <table className="tbl min-w-[46rem]">
-                <thead><tr>{["Code", "Trades", "EXP amount", "FOB", "Rate", "Incentive", "Date", "Status", ""].map((h) => <th key={h} className={h === "EXP amount" ? "hidden xl:table-cell" : undefined}>{h}</th>)}</tr></thead>
+                <thead><tr>{["Code", "Trades", "EXP amount", "FOB", "Rate", "Incentive", "Date", "Status", ""].map((h) => <th key={h} className={cn(RIGHT.has(h) && "r", h === "EXP amount" && "hidden xl:table-cell")}>{h}</th>)}</tr></thead>
                 <tbody>
                   {visible.map((r) => (
                     <tr key={r.id} className="cursor-pointer" onClick={() => navigate(`/incentives/${r.id}`)}>
                       <td className="num font-medium">{r.code}</td>
                       <td className="num text-[0.7812rem]">{tradesOf(r)}</td>
-                      <td className="hidden xl:table-cell num">{bdt(r.exp_amount)}</td>
-                      <td className="num">{bdt(r.fob)}</td>
-                      <td className="num">{Number(r.incentive_pct)}%</td>
-                      <td className="num font-semibold">{bdt(r.incentive_amount)}</td>
+                      <td className="r hidden xl:table-cell num">{bdt(r.exp_amount)}</td>
+                      <td className="r num">{bdt(r.fob)}</td>
+                      <td className="r num">{Number(r.incentive_pct)}%</td>
+                      <td className="r num font-semibold">{bdt(r.incentive_amount)}</td>
                       <td className="num text-mut">{fmtDate(r.created_at)}</td>
                       <td><Chip status={r.status} /></td>
-                      <td className="text-right"><div className="inline-flex items-center gap-2"><span className="hidden xl:contents">{actions(r)}</span><ChevronRight className="size-4 text-mut" /></div></td>
+                      <td className="text-right"><div className="inline-flex items-center gap-2"><span className="hidden xl:contents">{actions(r)}</span></div></td>
                     </tr>
                   ))}
                 </tbody>

@@ -118,15 +118,13 @@ export function Money({ bdt: b, usd: u, className, align }: { bdt: number | stri
 export function Kpi({ label, value, sub, usdValue, icon, tone }: { label: string; value: ReactNode; sub?: ReactNode; usdValue?: number | string | null; icon?: ReactNode; tone?: Tone }) {
   const line = usdOpt(usdValue);
   return (
-    <div className="card relative flex min-w-0 flex-col gap-3 overflow-hidden p-4">
+    <div className="card relative flex min-w-0 flex-col gap-2.5 overflow-hidden px-5 py-4">
       <div className="flex items-center justify-between gap-2">
-        <span className="lbl">{label}</span>
-        {icon && (
-          <span className={cn("grid size-8 place-items-center rounded-lg [&_svg]:size-4", tone ? `chip-${tone}` : "bg-raised text-mut")}>{icon}</span>
-        )}
+        <span className="text-[0.8125rem] text-fg/80">{label}</span>
+        {icon && <span className="text-mut [&_svg]:size-4">{icon}</span>}
       </div>
       <div className="min-w-0">
-        <div className="num truncate text-[1.375rem] font-semibold leading-tight">{value}</div>
+        <div className="num truncate text-[1.5rem] font-semibold leading-tight tracking-tight">{value}</div>
         {line && <div className="num mt-0.5 text-[0.7812rem] text-mut">{line}</div>}
       </div>
       {sub && <div className="text-[0.7812rem] text-mut">{sub}</div>}
@@ -173,7 +171,7 @@ export function Panel({ title, right, children, className }: { title?: ReactNode
     <div className={cn("card overflow-hidden", className)}>
       {(title || right) && (
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
-          <div className="text-[0.875rem] font-semibold">{title}</div>
+          <div className="text-[0.9375rem] font-semibold">{title}</div>
           {right}
         </div>
       )}
@@ -226,15 +224,15 @@ export function Progress({ value, className, tone = "accent" }: { value: number;
 
 export function Segments<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: { value: T; label: string; count?: number }[] }) {
   return (
-    <div className="scroll-thin flex max-w-full gap-1 overflow-x-auto rounded-lg bg-raised p-1">
+    <div className="scroll-thin flex max-w-full gap-0.5 overflow-x-auto rounded-[0.5625rem] border border-line bg-surface p-[3px]">
       {options.map((o) => (
         <button
           key={o.value}
           type="button"
           onClick={() => onChange(o.value)}
           className={cn(
-            "flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-[0.8125rem] font-medium transition",
-            value === o.value ? "bg-surface text-fg shadow-sm" : "text-mut hover:text-fg",
+            "flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1 text-[0.8125rem] font-medium transition",
+            value === o.value ? "bg-raised text-fg" : "text-mut hover:text-fg",
           )}
         >
           {o.label}

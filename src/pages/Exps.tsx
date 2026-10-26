@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ChevronRight, Download, FileStack, Plus, Search } from "lucide-react";
+import { Download, FileStack, Plus, Search } from "lucide-react";
 import { AddExpDialog } from "@/components/expDialogs";
 import { useAllExps } from "@/lib/api";
 import { bdt, bdtShort, downloadCsv, fmtDate } from "@/lib/format";
-import { Button, Chip, Empty, Input, Kpi, KpiGrid, LoadingRows, Money, PageHeader, Panel, Progress, Segments } from "@/components/ui";
+import { Button, Chip, Empty, Input, Kpi, KpiGrid, LoadingRows, Money, PageHeader, Panel, Segments } from "@/components/ui";
+const RIGHT = new Set(["Contract", "EXP issued", "Issued", "Collected", "Amount", "Documents", "EXP amount", "FOB", "Rate", "Incentive"]);
 
 type Filter = "all" | "open" | "closed" | "no_shipment" | "docs_pending" | "uncollected";
 
@@ -90,7 +91,7 @@ export default function Exps() {
         ) : (
           <div className="scroll-thin overflow-x-auto">
             <table className="tbl min-w-[55rem]">
-              <thead><tr>{["EXP", "Trade", "Shipment", "Amount", "Documents", "Status", ""].map((h) => <th key={h}>{h}</th>)}</tr></thead>
+              <thead><tr>{["EXP", "Trade", "Shipment", "Amount", "Documents", "Status"].map((h) => <th key={h} className={RIGHT.has(h) ? "r" : undefined}>{h}</th>)}</tr></thead>
               <tbody>
                 {shown.map((e) => (
                   <tr key={e.id} className="cursor-pointer" onClick={() => navigate(`/exps/${e.id}`)}>
@@ -103,15 +104,14 @@ export default function Exps() {
                       {e.shipment_id ? <span className="num">{e.shipment_id}</span> : <span className="text-warn">Not set</span>}
                       <div className="text-[0.75rem] text-mut">{[e.awb_no && `AWB ${e.awb_no}`, e.shipment_date && fmtDate(e.shipment_date)].filter(Boolean).join(" · ")}</div>
                     </td>
-                    <td><Money bdt={e.amount} usd={e.amount_usd} /></td>
-                    <td className="w-40"><div className="mb-1 num text-[0.75rem] text-mut">{e.docs_final}/6 final</div><Progress value={(e.docs_final / 6) * 100} tone={e.docs_final === 6 ? "ok" : "accent"} /></td>
+                    <td className="r"><Money bdt={e.amount} usd={e.amount_usd} align="end" /></td>
+                    <td className="r num">{e.docs_final} / 6</td>
                     <td>
                       <div className="flex flex-wrap gap-1">
                         <Chip status={e.status} />
                         {e.collection_status && <Chip label={e.collection_status === "approved" ? "Collected" : "Coll. pending"} tone={e.collection_status === "approved" ? "ok" : "warn"} dot={false} />}
                       </div>
                     </td>
-                    <td className="text-right"><ChevronRight className="inline size-4 text-mut" /></td>
                   </tr>
                 ))}
               </tbody>

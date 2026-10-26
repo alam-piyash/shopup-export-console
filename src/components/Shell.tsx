@@ -3,7 +3,7 @@ import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import * as P from "@radix-ui/react-popover";
 import * as D from "@radix-ui/react-dialog";
-import { ArrowLeftRight, Bell, Coins, FileStack, LayoutDashboard, LogOut, Menu, Moon, Search, ShieldCheck, Sun, Wallet, X } from "lucide-react";
+import { ArrowLeftRight, Bell, Coins, FileStack, LayoutDashboard, LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Search, ShieldCheck, Sun, Wallet, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { actionLabel, actionTone, useActivity, useAllExps, useMe, usePendingCounts, useTrades } from "@/lib/api";
 import { timeAgo } from "@/lib/format";
@@ -11,7 +11,7 @@ import type { Me } from "@/lib/types";
 import { Avatar, cn } from "./ui";
 
 const NAV = [
-  { to: "/", label: "Overview", icon: LayoutDashboard, key: null },
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, key: null },
   { to: "/trades", label: "Trades", icon: ArrowLeftRight, key: "trades" },
   { to: "/exps", label: "EXPs", icon: FileStack, key: null },
   { to: "/collections", label: "Collections", icon: Wallet, key: "collections" },
@@ -40,19 +40,21 @@ function useSignOut() {
   };
 }
 
-function Brand() {
+function Brand({ collapsed }: { collapsed?: boolean }) {
   return (
-    <Link to="/" className="flex items-center gap-2.5 px-2">
-      <span className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-accent to-ok/80 text-[0.9375rem] font-bold text-accent-fg shadow-lg shadow-accent/20">S</span>
-      <span className="flex flex-col leading-tight">
-        <span className="text-[0.6875rem] text-mut">ShopUp</span>
-        <span className="text-[0.9375rem] font-semibold tracking-tight">Export Console</span>
-      </span>
+    <Link to="/" className={cn("flex items-center gap-2.5", collapsed ? "justify-center" : "px-1")} title="ShopUp Export Console">
+      <span className="grid size-8 shrink-0 place-items-center rounded-[9px] bg-fg text-[0.9375rem] font-bold text-bg">S</span>
+      {!collapsed && (
+        <span className="flex min-w-0 flex-col leading-tight">
+          <span className="truncate text-[0.875rem] font-semibold tracking-tight">Export Console</span>
+          <span className="text-[0.75rem] text-mut">ShopUp</span>
+        </span>
+      )}
     </Link>
   );
 }
 
-function NavList({ me, onNavigate }: { me: Me | null | undefined; onNavigate?: () => void }) {
+function NavList({ me, onNavigate, collapsed }: { me: Me | null | undefined; onNavigate?: () => void; collapsed?: boolean }) {
   const isAdmin = me?.role === "admin";
   const { data: counts } = usePendingCounts(isAdmin);
   const item = (to: string, label: string, Icon: typeof Bell, badge?: number, end?: boolean) => (
@@ -61,29 +63,32 @@ function NavList({ me, onNavigate }: { me: Me | null | undefined; onNavigate?: (
       to={to}
       end={end}
       onClick={onNavigate}
+      title={collapsed ? label : undefined}
+      aria-label={collapsed ? label : undefined}
       className={({ isActive }) =>
         cn(
-          "group flex items-center gap-3 rounded-lg px-3 py-2 text-[0.875rem] font-medium transition",
-          isActive ? "bg-accent/10 text-fg" : "text-mut hover:bg-raised hover:text-fg",
+          "relative flex items-center rounded-lg text-[0.8438rem] transition",
+          collapsed ? "mx-auto size-10 justify-center" : "h-9 gap-2.5 px-2.5",
+          isActive ? "bg-raised font-medium text-fg" : "text-fg/75 hover:bg-raised/70 hover:text-fg",
         )
       }
     >
-      {({ isActive }) => (
-        <>
-          <Icon className={cn("size-[1.125rem]", isActive ? "text-accent" : "")} strokeWidth={1.8} />
-          <span className="flex-1">{label}</span>
-          {badge ? <span className="num rounded-full bg-warn/15 px-2 py-0.5 text-[0.6875rem] font-semibold text-warn">{badge}</span> : null}
-        </>
-      )}
+      <Icon className="size-[1.0625rem] shrink-0" strokeWidth={1.8} />
+      {!collapsed && <span className="flex-1 truncate">{label}</span>}
+      {badge ? (
+        collapsed
+          ? <span className="absolute right-2 top-2 size-1.5 rounded-full bg-fg" />
+          : <span className="num rounded-md bg-fg px-1.5 text-[0.6875rem] font-semibold leading-[1.125rem] text-bg">{badge}</span>
+      ) : null}
     </NavLink>
   );
   return (
-    <nav className="flex flex-col gap-1">
-      <div className="lbl px-3 pb-1.5">Workspace</div>
+    <nav className="flex flex-col gap-0.5">
+      {!collapsed && <div className="px-2.5 pb-1.5 text-[0.6875rem] font-medium text-mut">Workspace</div>}
       {NAV.map((n) => item(n.to, n.label, n.icon, isAdmin && n.key ? counts?.[n.key] : undefined, n.to === "/"))}
       {isAdmin && (
         <>
-          <div className="lbl px-3 pb-1.5 pt-4">Admin</div>
+          {collapsed ? <div className="mx-auto my-2 h-px w-6 bg-line" /> : <div className="px-2.5 pb-1.5 pt-5 text-[0.6875rem] font-medium text-mut">Admin</div>}
           {item("/access", "Access control", ShieldCheck)}
         </>
       )}
@@ -91,13 +96,21 @@ function NavList({ me, onNavigate }: { me: Me | null | undefined; onNavigate?: (
   );
 }
 
-function UserCard({ me }: { me: Me | null | undefined }) {
+function UserCard({ me, collapsed }: { me: Me | null | undefined; collapsed?: boolean }) {
   const signOut = useSignOut();
+  if (collapsed) {
+    return (
+      <div className="flex flex-col items-center gap-2">
+        <Avatar name={me?.full_name || me?.email} src={me?.avatar_url} size={30} />
+        <button className="btn btn-ghost btn-icon h-9 w-9" onClick={signOut} aria-label="Sign out" title="Sign out"><LogOut /></button>
+      </div>
+    );
+  }
   return (
-    <div className="flex items-center gap-2.5 rounded-xl border border-line bg-bg/60 p-2.5">
-      <Avatar name={me?.full_name || me?.email} src={me?.avatar_url} size={34} />
+    <div className="flex items-center gap-2.5 border-t border-line px-1 pt-3">
+      <Avatar name={me?.full_name || me?.email} src={me?.avatar_url} size={30} />
       <div className="min-w-0 flex-1">
-        <div className="truncate text-[0.8438rem] font-medium">{me?.full_name || me?.email}</div>
+        <div className="truncate text-[0.8125rem] font-medium">{me?.full_name || me?.email}</div>
         <div className="text-[0.75rem] text-mut">{me?.role === "admin" ? "Admin" : me?.role === "operation" ? "Operation" : "No role"}</div>
       </div>
       <button className="btn btn-ghost btn-icon h-8 w-8" onClick={signOut} aria-label="Sign out" title="Sign out">
@@ -129,9 +142,9 @@ function Notifications({ me }: { me: Me | null | undefined }) {
                 <p className="text-[0.8125rem] text-mut">Nothing pending. Nice.</p>
               ) : (
                 <div className="flex flex-col gap-1.5 text-[0.8438rem]">
-                  {counts?.trades ? <Link to="/trades?status=awaiting" className="flex justify-between hover:text-accent"><span>Trades and amendments</span><span className="num">{counts.trades}</span></Link> : null}
-                  {counts?.collections ? <Link to="/collections?status=pending_approval" className="flex justify-between hover:text-accent"><span>Collections</span><span className="num">{counts.collections}</span></Link> : null}
-                  {counts?.incentives ? <Link to="/incentives?status=pending_approval" className="flex justify-between hover:text-accent"><span>Incentives</span><span className="num">{counts.incentives}</span></Link> : null}
+                  {counts?.trades ? <Link to="/trades?status=awaiting" className="flex justify-between hover:underline"><span>Trades and amendments</span><span className="num">{counts.trades}</span></Link> : null}
+                  {counts?.collections ? <Link to="/collections?status=pending_approval" className="flex justify-between hover:underline"><span>Collections</span><span className="num">{counts.collections}</span></Link> : null}
+                  {counts?.incentives ? <Link to="/incentives?status=pending_approval" className="flex justify-between hover:underline"><span>Incentives</span><span className="num">{counts.incentives}</span></Link> : null}
                 </div>
               )}
             </div>
@@ -215,7 +228,7 @@ function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (
                 <button
                   onMouseEnter={() => setIdx(i)}
                   onClick={() => go(r.to)}
-                  className={cn("flex w-full flex-col rounded-lg px-3 py-2 text-left", i === idx ? "bg-accent/10" : "")}
+                  className={cn("flex w-full flex-col rounded-lg px-3 py-2 text-left", i === idx ? "bg-raised" : "")}
                 >
                   <span className="text-[0.875rem] font-medium">{r.label}</span>
                   <span className="truncate text-[0.75rem] text-mut">{r.sub}</span>
@@ -242,7 +255,7 @@ const CRUMBS: Record<string, string> = {
 function Breadcrumb() {
   const { pathname } = useLocation();
   const parts = pathname.split("/").filter(Boolean);
-  if (!parts.length) return <span className="font-medium">Overview</span>;
+  if (!parts.length) return <span className="font-medium">Dashboard</span>;
   return (
     <div className="flex min-w-0 items-center gap-2 text-[0.8438rem]">
       {parts.map((p, i) => {
@@ -265,6 +278,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [cmd, setCmd] = useState(false);
   const { dark, toggle } = useTheme();
+  const [collapsed, setCollapsed] = useState(() => { try { return localStorage.getItem("ed-sidebar") === "collapsed"; } catch { return false; } });
+  const toggleSidebar = () => setCollapsed((c) => { const n = !c; try { localStorage.setItem("ed-sidebar", n ? "collapsed" : "open"); } catch { /* ignore */ } return n; });
   const { pathname } = useLocation();
   useEffect(() => setOpen(false), [pathname]);
   useEffect(() => {
@@ -276,27 +291,34 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, []);
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
 
-  const sidebar = (onNavigate?: () => void) => (
+  const sidebar = (onNavigate?: () => void, small = false) => (
     <>
-      <Brand />
-      <NavList me={me} onNavigate={onNavigate} />
+      <div className={cn("flex items-center gap-2 border-b border-line pb-4", small ? "flex-col" : "")}>
+        <div className="min-w-0 flex-1"><Brand collapsed={small} /></div>
+        {!onNavigate && (
+          <button className="btn btn-ghost btn-icon h-8 w-8 text-mut" onClick={toggleSidebar} aria-label={small ? "Expand sidebar" : "Collapse sidebar"} title={small ? "Expand sidebar" : "Collapse sidebar"}>
+            {small ? <PanelLeftOpen /> : <PanelLeftClose />}
+          </button>
+        )}
+      </div>
+      <NavList me={me} onNavigate={onNavigate} collapsed={small} />
       <div className="mt-auto flex flex-col gap-2">
-        <UserCard me={me} />
+        <UserCard me={me} collapsed={small} />
       </div>
     </>
   );
 
   return (
     <div className="flex min-h-screen">
-      <aside className="sticky top-0 hidden h-screen w-[16rem] shrink-0 flex-col gap-7 border-r border-line bg-surface/60 px-3 py-5 lg:flex">{sidebar()}</aside>
+      <aside className={cn("sticky top-0 hidden h-screen shrink-0 flex-col gap-5 border-r border-line bg-surface px-3 py-4 transition-[width] duration-200 lg:flex", collapsed ? "w-[4.25rem]" : "w-[15rem]")}>{sidebar(undefined, collapsed)}</aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-line bg-bg/80 px-3 backdrop-blur-md sm:px-6">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-line bg-bg/85 px-3 backdrop-blur-md sm:px-6">
           <button className="btn btn-ghost btn-icon lg:hidden" onClick={() => setOpen(true)} aria-label="Open menu"><Menu /></button>
           <div className="min-w-0 flex-1"><Breadcrumb /></div>
           <button
             onClick={() => setCmd(true)}
-            className="hidden h-9 w-64 items-center gap-2 rounded-lg border border-line bg-surface px-3 text-[0.8125rem] text-mut transition hover:border-mut/50 md:flex"
+            className="hidden h-8 w-60 items-center gap-2 rounded-lg border border-line bg-surface px-3 text-[0.8125rem] text-mut transition hover:border-mut/50 md:flex"
           >
             <Search className="size-4" />
             <span className="flex-1 text-left">Search</span>
@@ -306,13 +328,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Notifications me={me} />
           <button className="btn btn-ghost btn-icon" onClick={toggle} aria-label="Toggle theme">{dark ? <Sun /> : <Moon />}</button>
         </header>
-        <main className="glow mx-auto flex w-full max-w-[87.5rem] min-w-0 flex-1 flex-col gap-6 px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:pb-10">{children}</main>
+        <main className="mx-auto flex w-full max-w-[90rem] min-w-0 flex-1 flex-col gap-5 px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:pb-10">{children}</main>
       </div>
 
       {open && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
-          <div className="absolute inset-y-0 left-0 flex w-[18.125rem] max-w-[85%] animate-in flex-col gap-7 overflow-y-auto border-r border-line bg-surface px-3 py-5">
+          <div className="absolute inset-y-0 left-0 flex w-[17rem] max-w-[85%] animate-in flex-col gap-5 overflow-y-auto border-r border-line bg-surface px-3 py-4">
             <button className="btn btn-ghost btn-icon absolute right-2 top-4" onClick={() => setOpen(false)} aria-label="Close menu"><X /></button>
             {sidebar(() => setOpen(false))}
           </div>
