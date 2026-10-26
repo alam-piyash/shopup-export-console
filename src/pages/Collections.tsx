@@ -6,7 +6,6 @@ import { bdt, bdtShort, downloadCsv, fmtDate } from "@/lib/format";
 import type { Collection } from "@/lib/types";
 import { ApproveReject, Button, Chip, Empty, Input, Kpi, KpiGrid, LoadingRows, Money, PageHeader, Panel, Row, Segments } from "@/components/ui";
 import { AttachmentList } from "@/components/files";
-const RIGHT = new Set(["Contract", "EXP issued", "Issued", "Collected", "Amount", "Documents", "EXP amount", "FOB", "Rate", "Incentive"]);
 
 type Filter = "all" | "pending_approval" | "approved" | "rejected";
 
@@ -76,19 +75,20 @@ export default function Collections() {
         ) : (
           <>
             <div className="scroll-thin hidden overflow-x-auto md:block">
-              <table className="tbl min-w-[46rem]">
-                <thead><tr>{["Code", "Trade", "EXPs", "Amount", "Bank ref", "Date", "Status", ""].map((h) => <th key={h} className={h === "Bank ref" ? "hidden xl:table-cell" : RIGHT.has(h) ? "r" : undefined}>{h}</th>)}</tr></thead>
+              <table className="tbl min-w-[64rem]">
+                <thead><tr>{["Code", "Trade", "Buyer", "EXPs", "Amount", "Bank ref", "Date", "Status", ""].map((h, i) => <th key={i}>{h}</th>)}</tr></thead>
                 <tbody>
                   {visible.map((r) => (
                     <tr key={r.id} className="cursor-pointer" onClick={() => navigate(`/collections/${r.id}`)}>
                       <td className="num font-medium">{r.code}</td>
-                      <td><div className="num">{r.trades?.code}</div><div className="max-w-[11.25rem] truncate text-[0.75rem] text-mut">{r.trades?.importer_name}</div></td>
-                      <td className="num text-[0.75rem] text-mut">{r.collection_exps.length === 1 ? r.collection_exps[0].exps?.code : `${r.collection_exps[0]?.exps?.code ?? ""} +${r.collection_exps.length - 1} more`}</td>
-                      <td className="r"><Money bdt={r.amount} usd={r.amount_usd} align="end" /></td>
-                      <td className="hidden xl:table-cell max-w-40 truncate text-mut">{r.bank_reference}</td>
-                      <td className="num text-mut">{fmtDate(r.created_at)}</td>
+                      <td className="num">{r.trades?.code}</td>
+                      <td className="max-w-[13rem] truncate">{r.trades?.importer_name}</td>
+                      <td className="num">{r.collection_exps.length === 1 ? r.collection_exps[0].exps?.code : `${r.collection_exps[0]?.exps?.code ?? ""} +${r.collection_exps.length - 1}`}</td>
+                      <td className="num">{bdt(r.amount)}</td>
+                      <td className="max-w-[10rem] truncate">{r.bank_reference || <span className="text-mut">None</span>}</td>
+                      <td className="num">{fmtDate(r.created_at)}</td>
                       <td><Chip status={r.status} /></td>
-                      <td className="text-right"><div className="inline-flex items-center gap-2"><span className="hidden xl:contents">{actions(r)}</span></div></td>
+                      <td><div className="flex justify-end gap-2">{actions(r)}</div></td>
                     </tr>
                   ))}
                 </tbody>

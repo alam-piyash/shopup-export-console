@@ -5,6 +5,7 @@ import { ALLOWED_DOMAIN, isAllowedEmail, supabase } from "@/lib/supabase";
 import { errMsg } from "@/lib/format";
 import sceneSvg from "@/assets/login-scene.svg?raw";
 import "./login-scene.css";
+import { Logo } from "@/components/Logo";
 
 const SCENE_ROOT = 'viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice"';
 // Mobile copies drop the full-page sky so they blend into the page background.
@@ -97,15 +98,7 @@ export default function Login() {
     </div>
   );
 
-  const brand = (
-    <div className="flex items-center gap-2.5">
-      <span className="grid size-9 place-items-center rounded-[10px] bg-gradient-to-br from-[#2f66eb] to-[#10b981] text-[15px] font-bold text-white">S</span>
-      <div>
-        <div className="text-[14px] font-semibold text-white">ShopUp Export Console</div>
-        <div className="text-[10px] tracking-[0.14em] text-slate-400">INTERNAL</div>
-      </div>
-    </div>
-  );
+  const brand = <Logo size={36} onDark />;
 
   return (
     <div className="relative min-h-[100svh] overflow-hidden bg-[#050b18] text-slate-200">

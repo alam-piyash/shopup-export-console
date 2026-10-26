@@ -5,7 +5,6 @@ import { AddExpDialog } from "@/components/expDialogs";
 import { useAllExps } from "@/lib/api";
 import { bdt, bdtShort, downloadCsv, fmtDate } from "@/lib/format";
 import { Button, Chip, Empty, Input, Kpi, KpiGrid, LoadingRows, Money, PageHeader, Panel, Segments } from "@/components/ui";
-const RIGHT = new Set(["Contract", "EXP issued", "Issued", "Collected", "Amount", "Documents", "EXP amount", "FOB", "Rate", "Incentive"]);
 
 type Filter = "all" | "open" | "closed" | "no_shipment" | "docs_pending" | "uncollected";
 
@@ -90,28 +89,21 @@ export default function Exps() {
           <Empty icon={<FileStack />} title={rows.length ? "Nothing here" : "No EXPs yet"} body="EXPs are added from an active trade." />
         ) : (
           <div className="scroll-thin overflow-x-auto">
-            <table className="tbl min-w-[55rem]">
-              <thead><tr>{["EXP", "Trade", "Shipment", "Amount", "Documents", "Status"].map((h) => <th key={h} className={RIGHT.has(h) ? "r" : undefined}>{h}</th>)}</tr></thead>
+            <table className="tbl min-w-[70rem]">
+              <thead><tr>{["EXP", "Type", "Trade", "Buyer", "Shipment ID", "Shipment date", "Amount", "Documents", "Collection", "Status"].map((h) => <th key={h}>{h}</th>)}</tr></thead>
               <tbody>
                 {shown.map((e) => (
                   <tr key={e.id} className="cursor-pointer" onClick={() => navigate(`/exps/${e.id}`)}>
-                    <td>
-                      <div className="num font-medium">{e.code}</div>
-                      {e.type === "advance" && <div className="text-[0.75rem] text-info">Advance</div>}
-                    </td>
-                    <td><div className="num">{e.trade_code}</div><div className="max-w-[12.5rem] truncate text-[0.75rem] text-mut">{e.importer_name}</div></td>
-                    <td className="text-[0.8125rem]">
-                      {e.shipment_id ? <span className="num">{e.shipment_id}</span> : <span className="text-warn">Not set</span>}
-                      <div className="text-[0.75rem] text-mut">{[e.awb_no && `AWB ${e.awb_no}`, e.shipment_date && fmtDate(e.shipment_date)].filter(Boolean).join(" · ")}</div>
-                    </td>
-                    <td className="r"><Money bdt={e.amount} usd={e.amount_usd} align="end" /></td>
-                    <td className="r num">{e.docs_final} / 6</td>
-                    <td>
-                      <div className="flex flex-wrap gap-1">
-                        <Chip status={e.status} />
-                        {e.collection_status && <Chip label={e.collection_status === "approved" ? "Collected" : "Coll. pending"} tone={e.collection_status === "approved" ? "ok" : "warn"} dot={false} />}
-                      </div>
-                    </td>
+                    <td className="num font-medium">{e.code}</td>
+                    <td>{e.type === "advance" ? "Advance" : "Regular"}</td>
+                    <td className="num">{e.trade_code}</td>
+                    <td className="max-w-[13rem] truncate">{e.importer_name}</td>
+                    <td className="num">{e.shipment_id || <span className="text-warn">Not set</span>}</td>
+                    <td className="num">{e.shipment_date ? fmtDate(e.shipment_date) : <span className="text-mut">Not set</span>}</td>
+                    <td className="num">{bdt(e.amount)}</td>
+                    <td className="num">{e.docs_final} / 6 final</td>
+                    <td>{e.collection_status ? <Chip label={e.collection_status === "approved" ? "Collected" : "Pending"} tone={e.collection_status === "approved" ? "ok" : "warn"} dot={false} /> : <span className="text-mut">Not collected</span>}</td>
+                    <td><Chip status={e.status} /></td>
                   </tr>
                 ))}
               </tbody>

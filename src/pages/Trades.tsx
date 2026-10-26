@@ -5,7 +5,6 @@ import { useIsAdmin, useTradeActions, useTrades } from "@/lib/api";
 import { bdt, bdtShort, downloadCsv, fmtDate, pct } from "@/lib/format";
 import type { Trade } from "@/lib/types";
 import { ApproveReject, Button, Chip, Empty, Input, Kpi, KpiGrid, LoadingRows, Money, PageHeader, Panel, Segments, cn } from "@/components/ui";
-const RIGHT = new Set(["Contract", "EXP issued", "Issued", "Collected", "Amount", "Documents", "EXP amount", "FOB", "Rate", "Incentive"]);
 
 type Filter = "all" | "awaiting" | "active" | "revision_pending" | "closed" | "rejected";
 
@@ -117,36 +116,26 @@ export default function Trades() {
         ) : (
           <>
             <div className="scroll-thin hidden overflow-x-auto md:block">
-              <table className="tbl min-w-[46rem]">
+              <table className="tbl min-w-[64rem]">
                 <thead>
-                  <tr>{["Trade", "Buyer", "Contract", "EXP issued", "Issued", "Collected", "Status", ""].map((h) => <th key={h} className={cn(RIGHT.has(h) && "r", h === "Collected" && "hidden xl:table-cell")}>{h}</th>)}</tr>
+                  <tr>{["Trade", "SC no", "Buyer", "Contract date", "Contract value", "EXP issued", "Issued", "Collected", "Left to issue", "Status", ""].map((h, i) => <th key={i}>{h}</th>)}</tr>
                 </thead>
                 <tbody>
-                  {shown.map((t) => {
-                    const p = pct(t.exp_issued, t.contract_amount);
-                    return (
-                      <tr key={t.id} className="cursor-pointer" onClick={() => open(t)}>
-                        <td>
-                          <div className="num font-medium">{t.code}</div>
-                          <div className="text-[0.75rem] text-mut">SC {t.sales_contract_no} · {fmtDate(t.contract_date)}</div>
-                        </td>
-                        <td className="max-w-[12rem]">
-                          <div className="flex items-center gap-2 truncate font-medium">{t.importer_name}{t.is_demo && <Chip label="Demo" tone="gray" dot={false} />}</div>
-                          <div className="truncate text-[0.75rem] text-mut">{t.importer_country} · {t.products}</div>
-                        </td>
-                        <td className="r"><Money bdt={t.contract_amount} usd={t.contract_amount_usd} align="end" /></td>
-                        <td className="r"><Money bdt={t.exp_issued} usd={t.exp_issued_usd} align="end" /></td>
-                        <td className="r num">{p}%</td>
-                        <td className="r hidden xl:table-cell"><Money bdt={t.collected} usd={t.collected_usd} align="end" /></td>
-                        <td><Chip status={t.status} /></td>
-                        <td className="text-right">
-                          <div className="inline-flex items-center justify-end gap-2">
-                            <span className="hidden xl:contents"><TradeApprovals t={t} /></span>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {shown.map((t) => (
+                    <tr key={t.id} className="cursor-pointer" onClick={() => open(t)}>
+                      <td className="num font-medium">{t.code}</td>
+                      <td className="num">{t.sales_contract_no}</td>
+                      <td className="max-w-[13rem] truncate">{t.importer_name}{t.is_demo && <span className="ml-1.5 text-mut">(demo)</span>}</td>
+                      <td className="num">{fmtDate(t.contract_date)}</td>
+                      <td className="num">{bdt(t.contract_amount)}</td>
+                      <td className="num">{bdt(t.exp_issued)}</td>
+                      <td className="num">{pct(t.exp_issued, t.contract_amount)}%</td>
+                      <td className="num">{bdt(t.collected)}</td>
+                      <td className="num">{bdt(Number(t.contract_amount) - Number(t.exp_issued))}</td>
+                      <td><Chip status={t.status} /></td>
+                      <td><div className="flex justify-end"><TradeApprovals t={t} /></div></td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

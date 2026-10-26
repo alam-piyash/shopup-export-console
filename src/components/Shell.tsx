@@ -9,6 +9,7 @@ import { actionLabel, actionTone, useActivity, useAllExps, useMe, usePendingCoun
 import { timeAgo } from "@/lib/format";
 import type { Me } from "@/lib/types";
 import { Avatar, cn } from "./ui";
+import { Logo, LogoMark } from "./Logo";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, key: null },
@@ -23,7 +24,7 @@ export function useTheme() {
   const toggle = () => {
     const next = !dark;
     document.documentElement.classList.toggle("dark", next);
-    try { localStorage.setItem("ed-theme", next ? "dark" : "light"); } catch { /* ignore */ }
+    try { localStorage.setItem("ed-theme-v2", next ? "dark" : "light"); } catch { /* ignore */ }
     setDark(next);
   };
   return { dark, toggle };
@@ -42,14 +43,8 @@ function useSignOut() {
 
 function Brand({ collapsed }: { collapsed?: boolean }) {
   return (
-    <Link to="/" className={cn("flex items-center gap-2.5", collapsed ? "justify-center" : "px-1")} title="ShopUp Export Console">
-      <span className="grid size-8 shrink-0 place-items-center rounded-[9px] bg-fg text-[0.9375rem] font-bold text-bg">S</span>
-      {!collapsed && (
-        <span className="flex min-w-0 flex-col leading-tight">
-          <span className="truncate text-[0.875rem] font-semibold tracking-tight">Export Console</span>
-          <span className="text-[0.75rem] text-mut">ShopUp</span>
-        </span>
-      )}
+    <Link to="/" className={cn("flex items-center", collapsed ? "justify-center" : "px-1")} title="ShopUp Export Console">
+      {collapsed ? <LogoMark size={32} /> : <Logo size={32} />}
     </Link>
   );
 }
