@@ -54,3 +54,5 @@
 .lg-scene .lg-ship{animation-duration:20s}
 .lg-scene .lg-wv path{stroke:#60a5fa;stroke-opacity:.28;stroke-width:1.5}
 .lg-scene .lg-bob{animation:lg-bob 2.6s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 100%}
+.lg-m .lg-scene .lg-ship{animation-name:lg-sail-m;animation-duration:16s}
+@keyframes lg-sail-m{0%{transform:translateX(420px);opacity:0}6%{opacity:1}90%{opacity:1}100%{transform:translateX(760px);opacity:0}}

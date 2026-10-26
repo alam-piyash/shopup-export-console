@@ -6,6 +6,27 @@ import { errMsg } from "@/lib/format";
 import sceneSvg from "@/assets/login-scene.svg?raw";
 import "./login-scene.css";
 
+const SCENE_ROOT = 'viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice"';
+// Mobile copies drop the full-page sky so they blend into the page background.
+const BARE = sceneSvg
+  .replace('<rect width="1440" height="900" fill="url(#bg)"/>', "")
+  .replace(/<circle[^>]*class="lg-blob[12]"\/>/g, "");
+// The port copy also drops the map layer (dots, routes, ports) so only port, sea, ship and plane remain.
+const PORT_BASE = BARE.slice(0, BARE.indexOf('<path d="M528.2 92h0')) + BARE.slice(BARE.indexOf('<g class="lg-pw2">'));
+const MAP_SVG = BARE.replace(SCENE_ROOT, 'viewBox="455 70 990 480" preserveAspectRatio="xMidYMid meet"');
+const PORT_SVG = PORT_BASE.replace(SCENE_ROOT, 'viewBox="100 460 620 440" preserveAspectRatio="xMidYMax slice"');
+const PORT_SVG_WIDE = PORT_BASE.replace(SCENE_ROOT, 'viewBox="0 430 1100 470" preserveAspectRatio="xMidYMax slice"');
+
+function useWidth() {
+  const [w, setW] = useState(() => (typeof window === "undefined" ? 1440 : window.innerWidth));
+  useEffect(() => {
+    const on = () => setW(window.innerWidth);
+    window.addEventListener("resize", on);
+    return () => window.removeEventListener("resize", on);
+  }, []);
+  return w;
+}
+
 const DOMAIN_MSG = `Only ${ALLOWED_DOMAIN} accounts can sign in. Please continue with your ShopUp Google account.`;
 
 export default function Login() {
@@ -14,6 +35,7 @@ export default function Login() {
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from || "/";
   const [busy, setBusy] = useState(false);
+  const width = useWidth();
   const [error, setError] = useState<string | null>(params.get("error") === "domain" ? DOMAIN_MSG : null);
 
   useEffect(() => {
@@ -52,36 +74,62 @@ export default function Login() {
     }
   }
 
-  return (
-    <div className="relative min-h-screen overflow-hidden bg-[#050b18] text-slate-200">
-      <div className="absolute inset-0" aria-hidden dangerouslySetInnerHTML={{ __html: sceneSvg }} />
-      <div className="absolute left-4 top-7 z-10 flex items-center gap-2.5 sm:left-[5vw] lg:left-16">
-        <span className="grid size-9 place-items-center rounded-[10px] bg-gradient-to-br from-[#2f66eb] to-[#10b981] text-[15px] font-bold text-white">S</span>
-        <div>
-          <div className="text-[14px] font-semibold text-white">ShopUp Export Console</div>
-          <div className="text-[10px] tracking-[0.14em] text-slate-400">INTERNAL</div>
+  const card = (
+    <div className="rounded-2xl border border-slate-400/20 bg-[#0a1428]/60 p-6 shadow-[0_30px_80px_rgba(0,0,0,0.45)] backdrop-blur-md sm:p-7">
+      <h1 className="text-[22px] font-semibold tracking-tight text-white">Sign in</h1>
+      <p className="mt-1.5 text-[13.5px] leading-relaxed text-slate-400">Use your ShopUp Google account to continue.</p>
+      {error && (
+        <div className="mt-5 flex gap-2 rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2.5 text-[13px] text-red-200">
+          <ShieldAlert className="mt-0.5 size-4 shrink-0" />
+          <span>{error}</span>
         </div>
+      )}
+      <button
+        type="button"
+        onClick={signIn}
+        disabled={busy}
+        className="mt-6 flex h-11 w-full items-center justify-center gap-2.5 rounded-[11px] bg-white text-[14px] font-semibold text-slate-900 transition hover:-translate-y-px hover:shadow-[0_8px_24px_rgba(96,165,250,0.3)] disabled:opacity-70"
+      >
+        {busy ? <Loader2 className="size-[18px] animate-spin" /> : <GoogleMark />}
+        {busy ? "Redirecting..." : "Continue with Google"}
+      </button>
+      <p className="mt-3.5 text-center text-[11.5px] text-slate-500">Only {ALLOWED_DOMAIN} accounts can sign in.</p>
+    </div>
+  );
+
+  const brand = (
+    <div className="flex items-center gap-2.5">
+      <span className="grid size-9 place-items-center rounded-[10px] bg-gradient-to-br from-[#2f66eb] to-[#10b981] text-[15px] font-bold text-white">S</span>
+      <div>
+        <div className="text-[14px] font-semibold text-white">ShopUp Export Console</div>
+        <div className="text-[10px] tracking-[0.14em] text-slate-400">INTERNAL</div>
       </div>
-      <div className="absolute inset-x-4 top-24 z-10 rounded-2xl border border-slate-400/20 bg-[#0a1428]/60 p-7 shadow-[0_30px_80px_rgba(0,0,0,0.45)] backdrop-blur-md sm:inset-x-auto sm:left-[5vw] sm:top-[clamp(96px,16vh,170px)] sm:w-[360px] lg:left-16">
-        <h1 className="text-[22px] font-semibold tracking-tight text-white">Sign in</h1>
-        <p className="mt-1.5 text-[13.5px] leading-relaxed text-slate-400">Use your ShopUp Google account to continue.</p>
-        {error && (
-          <div className="mt-5 flex gap-2 rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2.5 text-[13px] text-red-200">
-            <ShieldAlert className="mt-0.5 size-4 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={signIn}
-          disabled={busy}
-          className="mt-6 flex h-11 w-full items-center justify-center gap-2.5 rounded-[11px] bg-white text-[14px] font-semibold text-slate-900 transition hover:-translate-y-px hover:shadow-[0_8px_24px_rgba(96,165,250,0.3)] disabled:opacity-70"
-        >
-          {busy ? <Loader2 className="size-[18px] animate-spin" /> : <GoogleMark />}
-          {busy ? "Redirecting..." : "Continue with Google"}
-        </button>
-        <p className="mt-3.5 text-center text-[11.5px] text-slate-500">Only {ALLOWED_DOMAIN} accounts can sign in.</p>
-      </div>
+    </div>
+  );
+
+  return (
+    <div className="relative min-h-[100svh] overflow-hidden bg-[#050b18] text-slate-200">
+      {width >= 1024 ? (
+        <>
+          {/* Desktop: one full-screen scene, card on the left */}
+          <div className="absolute inset-0" aria-hidden dangerouslySetInnerHTML={{ __html: sceneSvg }} />
+          <div className="absolute left-16 top-7 z-10">{brand}</div>
+          <div className="absolute left-16 top-[clamp(96px,16vh,170px)] z-10 w-[360px]">{card}</div>
+        </>
+      ) : (
+        /* Mobile and tablet: network on top, card in the middle, port and sea at the bottom */
+        <div className="flex min-h-[100svh] flex-col bg-gradient-to-b from-[#050b18] via-[#0a1830] to-[#0c1d38]">
+          <div className="px-5 pt-6">{brand}</div>
+          <div className="relative mx-auto mt-4 aspect-[990/480] w-full max-w-2xl" aria-hidden dangerouslySetInnerHTML={{ __html: MAP_SVG }} />
+          <div className="relative z-10 mx-auto -mt-2 w-full max-w-md px-4">{card}</div>
+          <div className="min-h-6 flex-1" />
+          {width < 640 ? (
+            <div className="lg-m relative aspect-[620/440] max-h-[38svh] w-full" aria-hidden dangerouslySetInnerHTML={{ __html: PORT_SVG }} />
+          ) : (
+            <div className="relative aspect-[1100/470] w-full" aria-hidden dangerouslySetInnerHTML={{ __html: PORT_SVG_WIDE }} />
+          )}
+        </div>
+      )}
     </div>
   );
 }
