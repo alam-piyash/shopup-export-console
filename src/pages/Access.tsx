@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
-import { supabase, ALLOWED_DOMAIN } from "@/lib/supabase";
+import { supabase, ALLOWED_DOMAIN, ALLOWED_DOMAINS, isAllowedEmail } from "@/lib/supabase";
 import { rpc, useMe, useRefresh } from "@/lib/api";
 import { errMsg, fmtDateTime } from "@/lib/format";
 import type { AppRole } from "@/lib/types";
@@ -44,7 +44,7 @@ export default function Access() {
     qc.invalidateQueries({ queryKey: ["me"] });
   };
   const admins = (data ?? []).filter((p) => !p.pending && p.role === "admin").length;
-  const emailOk = new RegExp(`^[^@\\s]+@${ALLOWED_DOMAIN.replace(/\./g, "\\.")}$`, "i").test(email.trim());
+  const emailOk = isAllowedEmail(email);
 
   async function preassign() {
     setBusy(true);
@@ -84,7 +84,7 @@ export default function Access() {
         <Panel title="Pre-assign a role">
           <div className="grid grid-cols-1 items-end gap-3 p-5 sm:grid-cols-2 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_10rem_auto]">
             <Field label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} /></Field>
-            <Field label="Email"><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={`name@${ALLOWED_DOMAIN}`} /></Field>
+            <Field label="Email"><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={`name@${ALLOWED_DOMAINS[0]}`} /></Field>
             <Field label="Role">
               <Select value={role} onChange={(e) => setRole(e.target.value as AppRole)}>
                 <option value="operation">Operation</option>

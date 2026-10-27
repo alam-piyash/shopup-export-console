@@ -9,5 +9,14 @@ export const supabase = createClient(url || "https://placeholder.supabase.co", k
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "pkce" },
 });
 
-export const ALLOWED_DOMAIN = ((import.meta.env.VITE_ALLOWED_DOMAIN as string | undefined) || "shopup.org").toLowerCase();
-export const isAllowedEmail = (email?: string | null) => !!email && email.toLowerCase().endsWith("@" + ALLOWED_DOMAIN);
+/** Allowed Google Workspace domains, comma separated in VITE_ALLOWED_DOMAIN (for example "shopup.org,silq.net"). */
+export const ALLOWED_DOMAINS = ((import.meta.env.VITE_ALLOWED_DOMAIN as string | undefined) || "shopup.org,silq.net")
+  .split(",")
+  .map((d) => d.trim().toLowerCase())
+  .filter(Boolean);
+/** Human readable list, for example "shopup.org or silq.net". */
+export const ALLOWED_DOMAIN = ALLOWED_DOMAINS.join(" or ");
+export const isAllowedEmail = (email?: string | null) => {
+  const m = (email ?? "").trim().toLowerCase().match(/^[^@\s]+@([^@\s]+)$/);
+  return !!m && ALLOWED_DOMAINS.includes(m[1]);
+};

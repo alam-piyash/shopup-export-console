@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2, ShieldAlert } from "lucide-react";
-import { ALLOWED_DOMAIN, isAllowedEmail, supabase } from "@/lib/supabase";
+import { ALLOWED_DOMAIN, ALLOWED_DOMAINS, isAllowedEmail, supabase } from "@/lib/supabase";
 import { errMsg } from "@/lib/format";
 import sceneSvg from "@/assets/login-scene.svg?raw";
 import "./login-scene.css";
@@ -66,7 +66,7 @@ export default function Login() {
       provider: "google",
       options: {
         redirectTo: window.location.origin + "/login",
-        queryParams: { hd: ALLOWED_DOMAIN, prompt: "select_account" },
+        queryParams: ALLOWED_DOMAINS.length === 1 ? { hd: ALLOWED_DOMAINS[0], prompt: "select_account" } : { prompt: "select_account" },
       },
     });
     if (error) {
