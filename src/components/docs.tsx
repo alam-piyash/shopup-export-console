@@ -188,7 +188,7 @@ export function DocCard({ doc, small, defaultOpen }: { doc: DocModel; n?: number
       </div>
 
       <div className={cn("grid transition-[grid-template-rows] duration-300 ease-out", open && hasHistory ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
-        <div className="overflow-hidden">
+        <div className="overflow-hidden" aria-hidden={!(open && hasHistory)} {...(!(open && hasHistory) ? { inert: "" } : {})}>
           <div className={cn("mb-3 mr-3 flex flex-col gap-1 rounded-xl bg-raised/60 p-2.5", small ? "ml-3 sm:ml-[3.875rem]" : "ml-3 sm:ml-[4.5rem]")}>
             {doc.versions.map((v, i) => {
               const tone = v.is_final ? "bg-ok/10 text-ok" : i === 0 && !isFinal ? "bg-warn/10 text-warn" : "bg-line/70 text-fg/70";

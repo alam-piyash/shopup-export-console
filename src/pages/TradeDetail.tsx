@@ -101,7 +101,7 @@ export default function TradeDetail() {
         <Kpi label="Contract" value={bdtShort(contract)} usdValue={t.contract_amount_usd} sub={t.exchange_rate ? `Rate ৳${Number(t.exchange_rate)} per USD` : bdt(contract)} />
         <Kpi label="EXP issued" value={bdtShort(issued)} usdValue={t.exp_issued_usd} sub={<div className="flex items-center gap-2"><Progress value={pct(issued, contract)} /><span className="num">{pct(issued, contract)}%</span></div>} />
         <Kpi label="Collected" value={bdtShort(t.collected)} usdValue={t.collected_usd} sub={<div className="flex items-center gap-2"><Progress tone="ok" value={pct(t.collected, issued)} /><span className="num">{pct(t.collected, issued)}%</span></div>} />
-        <Kpi label="Available to issue" value={bdtShort(available)} sub={t.tolerance_pct ? `Tolerance ${Number(t.tolerance_pct)}% (hint only)` : "Left to issue as EXPs"} />
+        <Kpi label="Available to issue" value={bdtShort(available)} sub={t.tolerance_pct ? `Amount changes allowed up to ${Number(t.tolerance_pct)}% over` : "Left to issue as EXPs"} />
       </KpiGrid>
 
       <div>
@@ -197,6 +197,7 @@ function ContractTab({ tradeId }: { tradeId: string }) {
   const profiles = useProfiles().data ?? {};
   const t = data?.trade;
   if (!t) return null;
+  const EXTRA_LABEL: Record<string, string> = { signatory_name: "Signatory", signatory_designation: "Signatory designation" };
   const extras = Object.entries((t.contract_extra ?? {}) as Record<string, string>);
   const notify = t.notify_parties ?? [];
   const opt = (v?: string | number | null) => (v === null || v === undefined || v === "" ? <span className="text-mut">Not set</span> : String(v));
@@ -221,7 +222,7 @@ function ContractTab({ tradeId }: { tradeId: string }) {
           <Row label="Payment type" value={opt(t.payment_type)} />
           {t.payment_terms && <Row label="Other terms" value={t.payment_terms} />}
           {t.incentive_terms && <Row label="Incentive terms" value={t.incentive_terms} />}
-          {extras.map(([k, v]) => <Row key={k} label={k.replace(/_/g, " ")} value={String(v)} />)}
+          {extras.map(([k, v]) => <Row key={k} label={EXTRA_LABEL[k] ?? k.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())} value={String(v)} />)}
           {t.notes && <p className="mt-3 text-[0.8125rem] text-mut">{t.notes}</p>}
           <div className="mt-3 text-[0.75rem] text-mut">
             Submitted by {t.is_demo ? "Demo" : profiles[t.created_by] ?? "Unknown"} on {fmtDate(t.created_at)}
