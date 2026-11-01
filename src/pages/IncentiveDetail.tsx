@@ -1,8 +1,8 @@
 import { Link, useParams } from "react-router-dom";
-import { useDecide, useIncentives, useIsAdmin, useProfiles, INCENTIVE_DOCS } from "@/lib/api";
+import { useDecide, useIncentives, useIsAdmin, useProfiles } from "@/lib/api";
 import { bdt, bdtShort, fmtDate } from "@/lib/format";
 import { ApproveReject, Chip, Empty, Kpi, KpiGrid, LoadingRows, Money, Panel, Row } from "@/components/ui";
-import { AttachmentList } from "@/components/files";
+import { EntityDocPanel } from "@/components/entityDocs";
 
 export default function IncentiveDetail() {
   const { incentiveId = "" } = useParams();
@@ -66,9 +66,7 @@ export default function IncentiveDetail() {
             </ul>
           </Panel>
         </div>
-        <Panel title="Documents" right={<span className="text-[0.75rem] text-mut">{INCENTIVE_DOCS.join(", ")}</span>}>
-          <AttachmentList entityId={r.id} expected={INCENTIVE_DOCS} />
-        </Panel>
+        <EntityDocPanel entityType="incentive" entityId={r.id} folder="incentives" hint="Add a version at each stage (submitted, signed, endorsed). Mark final to close a document." />
       </div>
     </>
   );

@@ -131,7 +131,7 @@ export function useActivity(limit = 12, tradeId?: string) {
 export function useRefresh() {
   const qc = useQueryClient();
   return () => {
-    ["trades", "trade", "exps", "exp", "collections", "incentives", "pending-counts", "activity", "attachments", "demo-count", "contract_documents", "exp_amount_changes"].forEach((k) =>
+    ["trades", "trade", "exps", "exp", "collections", "incentives", "pending-counts", "activity", "attachments", "demo-count", "contract_documents", "exp_amount_changes", "documents"].forEach((k) =>
       qc.invalidateQueries({ queryKey: [k] }),
     );
   };

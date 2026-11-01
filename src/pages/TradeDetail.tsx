@@ -7,7 +7,7 @@ import { EXP_DOCS, actionLabel, actionTone, useActivity, useIsAdmin, useMe, useP
 import { bdt, bdtShort, daysUntil, errMsg, fmtDate, fmtDateTime, pct, usd } from "@/lib/format";
 import type { Amendment, Attachment, Exp, TradeItem } from "@/lib/types";
 import { ApproveReject, Button, Chip, Confirm, Empty, Kpi, KpiGrid, LoadingRows, Money, Panel, Progress, Row, Tabs, cn } from "@/components/ui";
-import { FileLink } from "@/components/files";
+import { EntityDocList } from "@/components/entityDocs";
 import { AddExpDialog, EditExpDialog } from "@/components/expDialogs";
 import { ContractVersions, FollowupsPanel } from "@/components/contractPanel";
 
@@ -339,8 +339,12 @@ function AmendmentsTab({ tradeId }: { tradeId: string }) {
               </table>
             </div>
             {r.rejection_reason && <p className="mt-3 text-[0.8125rem] text-bad">Rejected: {r.rejection_reason}</p>}
+            <div className="mt-4">
+              <EntityDocList entityType="trade_amendment" entityId={r.id} folder="trades/amendments" stages={["Submitted copy", "Signed copy", "Signed by both parties"]} />
+              {!f && <p className="text-[0.8125rem] text-mut">No amendment copy.</p>}
+            </div>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-              {f ? <FileLink path={f.file_path} name={f.file_name} size={f.file_size} demo={f.is_demo} /> : <span />}
+              <span />
               <span className="text-[0.75rem] text-mut">
                 {r.is_demo ? "Demo" : profiles[r.requested_by] ?? ""} · {fmtDate(r.created_at)}
                 {r.approved_at && ` · ${r.status} ${r.approved_by ? `by ${profiles[r.approved_by] ?? "admin"}` : ""} on ${fmtDate(r.approved_at)}`}

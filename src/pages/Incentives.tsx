@@ -5,7 +5,6 @@ import { useDecide, useIncentives, useIsAdmin } from "@/lib/api";
 import { bdt, bdtShort, downloadCsv, fmtDate } from "@/lib/format";
 import type { Incentive } from "@/lib/types";
 import { ApproveReject, Button, Chip, Empty, Input, Kpi, KpiGrid, LoadingRows, Money, PageHeader, Panel, Row, Segments, cn } from "@/components/ui";
-import { AttachmentList } from "@/components/files";
 
 type Filter = "all" | "pending_approval" | "approved" | "rejected";
 

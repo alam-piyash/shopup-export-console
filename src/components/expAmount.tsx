@@ -8,6 +8,8 @@ import { bdt, errMsg, fmtDate, rateHint, usdOpt } from "@/lib/format";
 import type { Exp, ExpAmountChange, UploadedFile } from "@/lib/types";
 import { ApproveReject, Button, Chip, Field, Grid, Input, Modal, Panel, Textarea, cn } from "./ui";
 import { FileActions, FileField } from "./files";
+import { DocList } from "./docs";
+import { entityDocModels, useEntityDocs } from "@/lib/documents";
 
 export function useExpAmountChanges(expId: string) {
   return useQuery({
@@ -105,12 +107,20 @@ export function ChangeAmountDialog({ exp, limitLeft, onClose }: { exp: Exp; limi
 /** History of amount changes with approve, reject and withdraw. */
 export function AmountChangesPanel({ exp }: { exp: Exp }) {
   const { data } = useExpAmountChanges(exp.id);
+  const backing = useEntityDocs("exp_amount_change", (data ?? []).map((c) => c.id));
   const profiles = useProfiles().data ?? {};
   const { data: me } = useMe();
   const isAdmin = me?.role === "admin";
   const refresh = useRefresh();
   const [busy, setBusy] = useState<string | null>(null);
   if (!data?.length) return null;
+  const backingDocs = data.flatMap((c) =>
+    entityDocModels(backing.data, { entityId: c.id, folder: "exps/amount-changes", refresh, stages: ["Submitted copy", "Corrected copy", "Bank endorsed copy"] }).map((d) => ({
+      ...d,
+      name: `Backing document · ${bdt(c.old_amount)} to ${bdt(c.new_amount)}`,
+      tag: c.status === "pending_approval" ? "Awaiting approval" : c.status === "approved" ? "Approved" : c.status === "rejected" ? "Rejected" : "Withdrawn",
+    })),
+  );
   const decide = async (id: string, approve: boolean, reason?: string) => {
     try {
       await rpc("decide_exp_amount_change", { p_id: id, p_approve: approve, p_reason: reason ?? null });
@@ -169,6 +179,12 @@ export function AmountChangesPanel({ exp }: { exp: Exp }) {
           </tbody>
         </table>
       </div>
+      {backingDocs.length > 0 && (
+        <div className="flex flex-col gap-2 border-t border-line p-4">
+          <div className="lbl">Backing documents</div>
+          <DocList docs={backingDocs} small />
+        </div>
+      )}
     </Panel>
   );
 }

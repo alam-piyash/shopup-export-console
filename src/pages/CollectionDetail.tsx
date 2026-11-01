@@ -1,8 +1,8 @@
 import { Link, useParams } from "react-router-dom";
-import { useCollections, useDecide, useIsAdmin, useProfiles, COLLECTION_DOCS } from "@/lib/api";
+import { useCollections, useDecide, useIsAdmin, useProfiles } from "@/lib/api";
 import { bdt, bdtShort, fmtDate } from "@/lib/format";
 import { ApproveReject, Chip, Empty, Kpi, KpiGrid, LoadingRows, Money, Panel, Row } from "@/components/ui";
-import { AttachmentList } from "@/components/files";
+import { EntityDocPanel } from "@/components/entityDocs";
 
 export default function CollectionDetail() {
   const { collectionId = "" } = useParams();
@@ -64,9 +64,7 @@ export default function CollectionDetail() {
             </ul>
           </Panel>
         </div>
-        <Panel title="Documents" right={<span className="text-[0.75rem] text-mut">{COLLECTION_DOCS.join(", ")}</span>}>
-          <AttachmentList entityId={c.id} expected={COLLECTION_DOCS} />
-        </Panel>
+        <EntityDocPanel entityType="collection" entityId={c.id} folder="collections" hint="Bank copies first, then corrected or endorsed copies as new versions. Mark final when the bank file is complete." />
       </div>
     </>
   );

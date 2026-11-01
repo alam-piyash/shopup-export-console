@@ -70,6 +70,8 @@ export type ContractDoc = {
   created_at: string;
   signed_by: string | null;
   signed_at: string | null;
+  stage?: string | null;
+  submitted_on?: string | null;
 };
 
 function useTable<T>(table: string, order: string) {
