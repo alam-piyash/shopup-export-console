@@ -112,7 +112,7 @@ export function AddExpDialog({ open, onOpenChange, tradeId: fixedTradeId, availa
             <Input inputMode="decimal" type="number" step="0.01" value={amountUsd} onChange={(e) => setAmountUsd(e.target.value)} placeholder="0" />
           </Field>
         </Grid>
-        {tolerance ? <p className="-mt-2 text-[0.75rem] text-mut">Contract tolerance {Number(tolerance)}% more or less at seller's option. Hint only, the limit stays the contract amount.</p> : null}
+        {tolerance ? <p className="-mt-2 text-[0.75rem] text-mut">Contract tolerance {Number(tolerance)}% more or less at seller's option. New EXPs go up to the contract amount. If a shipment ends up higher, use Change amount on the EXP (up to the tolerance).</p> : null}
         <div className="flex items-center justify-between gap-4 rounded-xl border border-line bg-bg p-3.5">
           <div>
             <div className="text-[0.8438rem] font-medium">Advance EXP</div>
