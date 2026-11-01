@@ -85,6 +85,7 @@ export type Exp = {
   incentive_status: ApprovalStatus | null;
   docs_final: number;
   docs_uploaded: number;
+  docs_total?: number;
 };
 
 export type ExpDoc = {

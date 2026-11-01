@@ -66,7 +66,7 @@ export default function IncentiveDetail() {
             </ul>
           </Panel>
         </div>
-        <Panel title="Documents" right={<span className="text-[0.75rem] text-mut">Eight required documents</span>}>
+        <Panel title="Documents" right={<span className="text-[0.75rem] text-mut">{INCENTIVE_DOCS.join(", ")}</span>}>
           <AttachmentList entityId={r.id} expected={INCENTIVE_DOCS} />
         </Panel>
       </div>

@@ -3,23 +3,23 @@ import { toast } from "sonner";
 import { supabase } from "./supabase";
 import type { Activity, AppRole, Exp, Me, Trade, UploadedFile } from "./types";
 
+/** Shipment documents every EXP needs (the sales contract is attached to the trade itself). */
 export const EXP_DOCS = [
+  "EXP Form",
+  "Commercial Invoice",
+  "Packing List",
   "Airway Bill",
   "Bill of Export",
+  "VAT Document",
   "Phytosanitary Certificate",
-  "Asycuda VAT Certificate",
-  "Commercial Invoice and Packing List",
-  "EXP Form",
+  "Mushak 6.3",
 ] as const;
-export const COLLECTION_DOCS = ["PRC", "Ka Form", "Swift Copy", "TT Voucher"] as const;
+export const COLLECTION_DOCS = ["Swift Copy", "PRC", "TT Voucher"] as const;
 export const INCENTIVE_DOCS = [
-  "Freight Certificate",
-  "Forwarding Letter",
-  "PRC",
-  "TT Calculation Copy",
-  "Swift Copy",
   "Ka Form",
   "Association Certificate",
+  "Forwarding Letter",
+  "Overdue Certificate",
   "Undertakings",
 ] as const;
 

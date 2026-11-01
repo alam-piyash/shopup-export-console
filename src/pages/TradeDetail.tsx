@@ -3,7 +3,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, FilePen, FileText, Lock, Pencil, Plus, Undo2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { actionLabel, actionTone, useActivity, useIsAdmin, useMe, useProfiles, useTrade, useTradeActions } from "@/lib/api";
+import { EXP_DOCS, actionLabel, actionTone, useActivity, useIsAdmin, useMe, useProfiles, useTrade, useTradeActions } from "@/lib/api";
 import { bdt, bdtShort, daysUntil, errMsg, fmtDate, fmtDateTime, pct, usd } from "@/lib/format";
 import type { Amendment, Attachment, Exp, TradeItem } from "@/lib/types";
 import { ApproveReject, Button, Chip, Confirm, Empty, Kpi, KpiGrid, LoadingRows, Money, Panel, Progress, Row, Tabs, cn } from "@/components/ui";
@@ -151,8 +151,8 @@ function ExpList({ exps, active, onEdit, onAdd }: { exps: Exp[]; active: boolean
             </div>
           </Link>
           <div className="w-full md:w-44">
-            <div className="mb-1.5 flex justify-between text-[0.75rem] text-mut"><span>Documents final</span><span className="num">{e.docs_final}/6</span></div>
-            <Progress value={(e.docs_final / 6) * 100} tone={e.docs_final === 6 ? "ok" : "accent"} />
+            <div className="mb-1.5 flex justify-between text-[0.75rem] text-mut"><span>Documents final</span><span className="num">{e.docs_final}/{e.docs_total ?? EXP_DOCS.length}</span></div>
+            <Progress value={(e.docs_final / (e.docs_total ?? EXP_DOCS.length)) * 100} tone={e.docs_final === (e.docs_total ?? EXP_DOCS.length) ? "ok" : "accent"} />
           </div>
           <div className="md:w-40 md:text-right"><Money bdt={e.amount} usd={e.amount_usd} className="font-semibold md:items-end" /></div>
           <div className="flex gap-1.5">

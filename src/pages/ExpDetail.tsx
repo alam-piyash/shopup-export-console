@@ -34,6 +34,7 @@ export default function ExpDetail() {
   if (error || !data) return <Empty title="EXP not found" body={error ? errMsg(error) : undefined} />;
   const { exp, docs } = data;
   const finals = docs.filter((d) => d.status === "final").length;
+  const total = docs.length || 8;
   const closed = exp.status === "closed";
   const needsShipment = !exp.shipment_id;
 
@@ -52,7 +53,7 @@ export default function ExpDetail() {
         <Button variant="outline" onClick={() => setEdit(true)}><Pencil /> Edit EXP</Button>
       </div>
 
-      {closed && <div className="banner chip-ok items-center"><Lock className="size-4" /> All six documents are final. This EXP closed automatically and its amount is locked.</div>}
+      {closed && <div className={cn("banner items-center", finals === total ? "chip-ok" : "chip-warn")}><Lock className="size-4" /> {finals === total ? "All shipment documents are final. This EXP closed automatically and its amount is locked." : `This EXP is closed and its amount is locked. ${total - finals} document${total - finals > 1 ? "s are" : " is"} still missing; upload to complete the file.`}</div>}
       {needsShipment && (
         <div className="banner chip-warn flex-wrap items-center justify-between">
           <span>Advance EXP. Add the shipment ID before uploading documents.</span>
@@ -63,7 +64,7 @@ export default function ExpDetail() {
       <KpiGrid cols={4}>
         <Kpi label="Amount" value={bdtShort(exp.amount)} usdValue={exp.amount_usd} />
         <Kpi label="Shipment" value={exp.shipment_id || "Not set"} sub={[exp.awb_no && `AWB ${exp.awb_no}`, exp.flight_no && `Flight ${exp.flight_no}`, exp.shipment_date && fmtDate(exp.shipment_date)].filter(Boolean).join(" · ") || undefined} />
-        <Kpi label="Documents final" value={`${finals}/6`} sub={<Progress value={(finals / 6) * 100} tone={finals === 6 ? "ok" : "accent"} />} />
+        <Kpi label="Documents final" value={`${finals}/${total}`} sub={<Progress value={(finals / total) * 100} tone={finals === total ? "ok" : "accent"} />} />
         <Kpi
           label="Collection"
           value={exp.collection_status === "approved" ? "Collected" : exp.collection_status ? "Pending" : "Not yet"}

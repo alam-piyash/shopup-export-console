@@ -64,7 +64,7 @@ export default function CollectionDetail() {
             </ul>
           </Panel>
         </div>
-        <Panel title="Documents" right={<span className="text-[0.75rem] text-mut">PRC, Ka Form, Swift Copy, TT Voucher</span>}>
+        <Panel title="Documents" right={<span className="text-[0.75rem] text-mut">{COLLECTION_DOCS.join(", ")}</span>}>
           <AttachmentList entityId={c.id} expected={COLLECTION_DOCS} />
         </Panel>
       </div>

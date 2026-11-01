@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Download, FileStack, Plus, Search } from "lucide-react";
 import { AddExpDialog } from "@/components/expDialogs";
-import { useAllExps } from "@/lib/api";
+import { EXP_DOCS, useAllExps } from "@/lib/api";
 import { bdt, bdtShort, downloadCsv, fmtDate } from "@/lib/format";
 import { Button, Chip, Empty, Input, Kpi, KpiGrid, LoadingRows, Money, PageHeader, Panel, Segments } from "@/components/ui";
 
@@ -22,7 +22,7 @@ export default function Exps() {
     open: (e) => e.status === "open",
     closed: (e) => e.status === "closed",
     no_shipment: (e) => e.status === "open" && !e.shipment_id,
-    docs_pending: (e) => e.status === "open" && !!e.shipment_id && e.docs_final < 6,
+    docs_pending: (e) => e.status === "open" && !!e.shipment_id && e.docs_final < (e.docs_total ?? EXP_DOCS.length),
     uncollected: (e) => !e.collection_status,
   };
   const count = (f: Filter) => rows.filter(match[f]).length;
@@ -101,7 +101,7 @@ export default function Exps() {
                     <td className="num">{e.shipment_id || <span className="text-warn">Not set</span>}</td>
                     <td className="num">{e.shipment_date ? fmtDate(e.shipment_date) : <span className="text-mut">Not set</span>}</td>
                     <td className="num">{bdt(e.amount)}</td>
-                    <td className="num">{e.docs_final} / 6 final</td>
+                    <td className="num">{e.docs_final} / {e.docs_total ?? EXP_DOCS.length} final</td>
                     <td>{e.collection_status ? <Chip label={e.collection_status === "approved" ? "Collected" : "Pending"} tone={e.collection_status === "approved" ? "ok" : "warn"} dot={false} /> : <span className="text-mut">Not collected</span>}</td>
                     <td><Chip status={e.status} /></td>
                   </tr>

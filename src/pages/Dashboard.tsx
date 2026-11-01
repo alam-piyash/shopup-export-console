@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeftRight, CheckCircle2, Coins, Ship, Wallet } from "lucide-react";
-import { actionLabel, actionTone, useActivity, useAllExps, useCollections, useDecide, useIncentives, useMe, useProfiles, useTradeActions, useTrades } from "@/lib/api";
+import { EXP_DOCS, actionLabel, actionTone, useActivity, useAllExps, useCollections, useDecide, useIncentives, useMe, useProfiles, useTradeActions, useTrades } from "@/lib/api";
 import { bdt, bdtShort, daysUntil, fmtDate, pct, timeAgo } from "@/lib/format";
 import { ApproveReject, Chip, Empty, Kpi, KpiGrid, Panel, Skeleton, cn } from "@/components/ui";
 
@@ -28,7 +28,7 @@ export default function Dashboard() {
     const incPending = sum((incs.data ?? []).filter((i) => i.status === "pending_approval"), (i: { incentive_amount: number }) => i.incentive_amount);
     const openExps = (exps.data ?? []).filter((e) => e.status === "open");
     const noShipment = openExps.filter((e) => !e.shipment_id);
-    const docsPending = openExps.filter((e) => e.shipment_id && e.docs_final < 6);
+    const docsPending = openExps.filter((e) => e.shipment_id && e.docs_final < (e.docs_total ?? EXP_DOCS.length));
     const uncollected = (exps.data ?? []).filter((e) => !e.collection_status && e.trade_status !== "rejected");
     const expiring = live
       .filter((t) => t.status === "active" && t.expiry_date)
