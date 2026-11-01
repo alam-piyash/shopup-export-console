@@ -64,7 +64,7 @@ export default function CollectionDetail() {
             </ul>
           </Panel>
         </div>
-        <EntityDocPanel entityType="collection" entityId={c.id} folder="collections" hint="Bank copies first, then corrected or endorsed copies as new versions. Mark final when the bank file is complete." />
+        <EntityDocPanel entityType="collection" entityId={c.id} folder="collections" hint="Add a new version each time a copy comes back. Mark final when the bank file is complete." />
       </div>
     </>
   );

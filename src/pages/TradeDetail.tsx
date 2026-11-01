@@ -340,7 +340,7 @@ function AmendmentsTab({ tradeId }: { tradeId: string }) {
             </div>
             {r.rejection_reason && <p className="mt-3 text-[0.8125rem] text-bad">Rejected: {r.rejection_reason}</p>}
             <div className="mt-4">
-              <EntityDocList entityType="trade_amendment" entityId={r.id} folder="trades/amendments" stages={["Submitted copy", "Signed copy", "Signed by both parties"]} />
+              <EntityDocList entityType="trade_amendment" entityId={r.id} folder="trades/amendments" />
               {!f && <p className="text-[0.8125rem] text-mut">No amendment copy.</p>}
             </div>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2">

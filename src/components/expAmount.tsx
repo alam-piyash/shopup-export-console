@@ -115,7 +115,7 @@ export function AmountChangesPanel({ exp }: { exp: Exp }) {
   const [busy, setBusy] = useState<string | null>(null);
   if (!data?.length) return null;
   const backingDocs = data.flatMap((c) =>
-    entityDocModels(backing.data, { entityId: c.id, folder: "exps/amount-changes", refresh, stages: ["Submitted copy", "Corrected copy", "Bank endorsed copy"] }).map((d) => ({
+    entityDocModels(backing.data, { entityId: c.id, folder: "exps/amount-changes", refresh }).map((d) => ({
       ...d,
       name: `Backing document · ${bdt(c.old_amount)} to ${bdt(c.new_amount)}`,
       tag: c.status === "pending_approval" ? "Awaiting approval" : c.status === "approved" ? "Approved" : c.status === "rejected" ? "Rejected" : "Withdrawn",

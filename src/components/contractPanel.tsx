@@ -47,7 +47,6 @@ export function ContractVersions({ trade, items, revs }: { trade: Trade; items: 
     finalVerb: "Mark signed",
     addAfterFinal: true,
     finalBlocked: latest && latest.source === "generated" ? "Generated drafts cannot be marked signed. Upload the signed copy as a new version, then mark it signed." : null,
-    stages: ["Signed by seller", "Signed by both parties", "Amendment signed copy"],
     folder: "trades/contracts",
     versions: list.map((d) => ({
       id: d.id,

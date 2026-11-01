@@ -115,7 +115,7 @@ export default function ExpDetail() {
             },
           } satisfies DocModel;
         })}
-        hint="Add a version at each stage (submitted copy, signed copy, signed by both parties and Bangladesh Bank). Earlier versions are kept. Mark final to close a document."
+        hint="Add a new version each time a copy comes back (Submitted, Signed or your own label). Earlier versions are kept. Mark final to close a document."
       />
       {changing && <ChangeAmountDialog exp={exp} limitLeft={data.limitLeft} onClose={() => setChanging(false)} />}
       {edit && <EditExpDialog exp={exp} available={data.available} onClose={() => setEdit(false)} />}

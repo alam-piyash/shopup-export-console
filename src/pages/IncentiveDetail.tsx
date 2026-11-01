@@ -66,7 +66,7 @@ export default function IncentiveDetail() {
             </ul>
           </Panel>
         </div>
-        <EntityDocPanel entityType="incentive" entityId={r.id} folder="incentives" hint="Add a version at each stage (submitted, signed, endorsed). Mark final to close a document." />
+        <EntityDocPanel entityType="incentive" entityId={r.id} folder="incentives" hint="Add a new version each time a copy comes back. Mark final to close a document." />
       </div>
     </>
   );
