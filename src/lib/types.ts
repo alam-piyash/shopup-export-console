@@ -131,6 +131,25 @@ export type ExpDoc = {
   uploaded_at: string | null;
   finalized_at: string | null;
   is_demo: boolean;
+  version_count?: number;
+  latest_stage?: string | null;
+};
+
+export type ExpDocVersion = {
+  id: string;
+  doc_id: string;
+  exp_id: string;
+  version: number;
+  stage: string | null;
+  submitted_on: string | null;
+  note: string | null;
+  file_path: string;
+  file_name: string;
+  file_size: number | null;
+  uploaded_by: string | null;
+  uploaded_at: string;
+  is_final: boolean;
+  is_demo: boolean;
 };
 
 export type TradeItem = {
