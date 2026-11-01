@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { rpc, uploadFile, useProfiles, useRefresh } from "@/lib/api";
 import { errMsg, fmtDate } from "@/lib/format";
-import { followupCheckpoints, useContractDocs } from "@/lib/masters";
+import { followupCheckpoints, useCompanyProfiles, useContractDocs } from "@/lib/masters";
 import { scDataFrom, saveGeneratedVersion } from "@/lib/contractDocs";
 import type { Amendment, Exp, Trade, TradeItem } from "@/lib/types";
 import { Button, Chip, Confirm, Empty, Panel } from "./ui";
@@ -14,6 +14,8 @@ import { FileActions } from "./files";
 /** Versions of the sales contract: generated drafts and uploaded copies, one of which is marked signed. */
 export function ContractVersions({ trade, items, revs }: { trade: Trade; items: TradeItem[]; revs: Amendment[] }) {
   const { data: docs, isLoading } = useContractDocs(trade.id);
+  const { data: companyProfiles } = useCompanyProfiles();
+  const profile = companyProfiles?.find((p) => p.id === trade.company_profile_id) ?? companyProfiles?.find((p) => p.is_default);
   const profiles = useProfiles().data ?? {};
   const refresh = useRefresh();
   const ref = useRef<HTMLInputElement>(null);
@@ -25,7 +27,7 @@ export function ContractVersions({ trade, items, revs }: { trade: Trade; items: 
   async function generate() {
     setBusy("gen");
     try {
-      await saveGeneratedVersion(trade.id, scDataFrom(trade, items, revs), next, revs.some((r) => r.status === "approved") ? `Includes amendment ${Math.max(...revs.filter((r) => r.status === "approved").map((r) => r.amendment_no))}` : "Generated from the trade");
+      await saveGeneratedVersion(trade.id, scDataFrom(trade, items, revs), next, revs.some((r) => r.status === "approved") ? `Includes amendment ${Math.max(...revs.filter((r) => r.status === "approved").map((r) => r.amendment_no))}` : "Generated from the trade", profile?.logo_path);
       toast.success(`Version ${next} generated`);
       refresh();
     } catch (e) {

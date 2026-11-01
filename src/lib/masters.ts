@@ -30,6 +30,8 @@ export type CompanyProfile = {
   };
   is_default: boolean;
   is_active: boolean;
+  logo_path?: string | null;
+  logo_name?: string | null;
 };
 
 export type Buyer = {

@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2 } from "lucide-react";
+import { ImageUp, Loader2, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
-import { rpc, useIsAdmin } from "@/lib/api";
+import { rpc, uploadFile, useIsAdmin } from "@/lib/api";
+import { loadLogo } from "@/lib/contractDocs";
 import { errMsg } from "@/lib/format";
 import { useBuyers, useCompanyProfiles, useProducts, type Notify } from "@/lib/masters";
 import { Button, Chip, Empty, Field, Grid, Input, LoadingRows, Modal, PageHeader, Panel, Segments, Select, Switch, Textarea } from "@/components/ui";
@@ -50,6 +51,59 @@ const PRODUCT_FIELDS: Def[] = [
 
 type Rec = Record<string, unknown>;
 const str = (v: unknown) => (v === null || v === undefined ? "" : String(v));
+
+function useLogoPreview(path?: string | null) {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    setSrc(null);
+    if (path) loadLogo(path).then((l) => live && setSrc(l?.data ?? null));
+    return () => { live = false; };
+  }, [path]);
+  return src;
+}
+
+function LogoThumb({ path }: { path?: string | null }) {
+  const src = useLogoPreview(path);
+  if (!path) return <span className="text-mut">None</span>;
+  return src ? <img src={src} alt="" className="h-7 max-w-[4.5rem] object-contain" /> : <span className="text-mut">Loading</span>;
+}
+
+/** Logo upload for a company profile. Printed at the top left of generated sales contracts. */
+function LogoField({ path, name, onChange }: { path?: string; name?: string; onChange: (path: string, name: string) => void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const src = useLogoPreview(path);
+  async function pick(f?: File) {
+    if (!f) return;
+    if (!/^image\/(png|jpe?g|webp|svg\+xml)$/.test(f.type)) { toast.error("Use a PNG, JPG, WEBP or SVG image"); return; }
+    if (f.size > 2 * 1024 * 1024) { toast.error("Logo must be under 2 MB"); return; }
+    setBusy(true);
+    try {
+      const up = await uploadFile(f, "company/logos");
+      onChange(up.path, up.name);
+    } catch (e) {
+      toast.error(errMsg(e));
+    } finally {
+      setBusy(false);
+      if (ref.current) ref.current.value = "";
+    }
+  }
+  return (
+    <div className="flex items-center gap-4 rounded-xl border border-line bg-bg p-3.5">
+      <div className="grid h-16 w-28 shrink-0 place-items-center overflow-hidden rounded-lg border border-line bg-white">
+        {path ? (src ? <img src={src} alt="Company logo" className="max-h-14 max-w-[6.5rem] object-contain" /> : <Loader2 className="size-4 animate-spin text-mut" />) : <ImageUp className="size-5 text-mut" />}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-[0.8438rem] font-medium">Company logo</div>
+        <div className="truncate text-[0.75rem] text-mut">{path ? name || "Logo uploaded" : "Printed at the top left of generated sales contracts. PNG, JPG, WEBP or SVG, under 2 MB."}</div>
+      </div>
+      <input ref={ref} type="file" className="hidden" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={(e) => pick(e.target.files?.[0])} />
+      {path && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onChange("", "")} aria-label="Remove logo"><X /></Button>}
+      <Button variant="outline" size="sm" disabled={busy} onClick={() => ref.current?.click()}>{busy ? <Loader2 className="animate-spin" /> : <ImageUp />} {path ? "Replace" : "Upload"}</Button>
+    </div>
+  );
+}
 
 function toForm(tab: Tab, r: Rec | null): Record<string, string> {
   if (!r) return tab === "products" ? { incoterm: "CFR" } : {};
@@ -141,10 +195,11 @@ export default function Masters() {
         {tab === "profiles" && (profiles.isLoading ? <LoadingRows /> : !profiles.data?.length ? <Empty title="No company profiles yet" /> : (
           <div className="scroll-thin overflow-x-auto">
             <table className="tbl min-w-[56rem]">
-              <thead><tr><th>Profile</th><th>Company</th><th>Bank</th><th>Account</th><th>SC prefix</th><th>Signatory</th><th>Status</th></tr></thead>
+              <thead><tr><th>Logo</th><th>Profile</th><th>Company</th><th>Bank</th><th>Account</th><th>SC prefix</th><th>Signatory</th><th>Status</th></tr></thead>
               <tbody>
                 {profiles.data.map((p) => (
                   <tr key={p.id} className={canEdit ? "cursor-pointer" : undefined} onClick={() => canEdit && open("profiles", p as unknown as Rec)}>
+                    <td><LogoThumb path={p.logo_path} /></td>
                     <td className="font-medium">{p.label}</td>
                     <td>{p.legal_name}</td>
                     <td>{[p.bank_name, p.bank_branch].filter(Boolean).join(", ")}</td>
@@ -212,6 +267,9 @@ export default function Masters() {
         }
       >
         <div className="flex flex-col gap-4">
+          {edit?.tab === "profiles" && (
+            <LogoField path={form.logo_path} name={form.logo_name} onChange={(path, name) => setForm((s) => ({ ...s, logo_path: path, logo_name: name }))} />
+          )}
           <Grid>
             {defs.map((d) => (
               <Field key={d.key} label={d.label} required={d.required} className={d.wide || d.type === "textarea" ? "sm:col-span-2" : undefined}>

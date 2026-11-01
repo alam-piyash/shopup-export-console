@@ -226,7 +226,7 @@ export default function TradeNew() {
       setBusy("Generating sales contract");
       try {
         const sc = scDataFrom({ ...(data as Record<string, unknown>), exporter: v.exporter, importer_name: v.importer_name, sales_contract_no: v.sales_contract_no, contract_date: v.contract_date }, allLines, [], v.shipment_deadline);
-        await saveGeneratedVersion(id, sc, 1, "Generated from the trade form");
+        await saveGeneratedVersion(id, sc, 1, "Generated from the trade form", profile?.logo_path);
         if (file) await rpc("add_contract_version", { p_trade: id, p_file: file, p_source: "uploaded", p_note: "Uploaded when the trade was created" });
       } catch (e) {
         toast.error(`Trade saved, but the contract PDF failed: ${errMsg(e)}. Generate it from the Sales contract tab.`);

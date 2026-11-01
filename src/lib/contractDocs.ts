@@ -1,4 +1,5 @@
 import { rpc, uploadFile } from "./api";
+import { supabase } from "./supabase";
 import { buildScPdf, scFileName, type ScData } from "./salesContract";
 import type { Amendment, Trade, TradeItem } from "./types";
 
@@ -51,8 +52,36 @@ export function scDataFrom(t: TradeLike, items: ItemLike[], amendments: Pick<Ame
   };
 }
 
+/** Loads a stored logo and converts it to a PNG data URL (works for PNG, JPG, WEBP and SVG). */
+export async function loadLogo(path?: string | null): Promise<ScData["logo"]> {
+  if (!path) return null;
+  const { data: blob, error } = await supabase.storage.from("documents").download(path);
+  if (error || !blob) return null;
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = await new Promise<HTMLImageElement>((res, rej) => {
+      const i = new Image();
+      i.onload = () => res(i);
+      i.onerror = rej;
+      i.src = url;
+    });
+    const w = img.naturalWidth || 300, h = img.naturalHeight || 150;
+    const scale = Math.min(1, 1200 / Math.max(w, h));
+    const c = document.createElement("canvas");
+    c.width = Math.round(w * scale);
+    c.height = Math.round(h * scale);
+    c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+    return { data: c.toDataURL("image/png"), w: c.width, h: c.height };
+  } catch {
+    return null;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 /** Generates the PDF, stores it and records it as a new draft version. Returns the version id. */
-export async function saveGeneratedVersion(tradeId: string, data: ScData, version: number, note?: string) {
+export async function saveGeneratedVersion(tradeId: string, data: ScData, version: number, note?: string, logoPath?: string | null) {
+  if (logoPath && !data.logo) data = { ...data, logo: await loadLogo(logoPath) };
   const blob = await buildScPdf(data);
   const file = new File([blob], scFileName(data.sales_contract_no, version), { type: "application/pdf" });
   const up = await uploadFile(file, "trades/contracts");

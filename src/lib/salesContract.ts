@@ -33,6 +33,7 @@ export type ScData = {
   tolerance_pct?: number | string | null;
   signatory_name?: string | null;
   signatory_designation?: string | null;
+  logo?: { data: string; w: number; h: number } | null;
   items: { description: string; carton_size?: string | null; hs_code?: string | null; incoterm?: string | null; quantity_kg: number | string; rate_usd_per_kg: number | string | null }[];
 };
 
@@ -89,16 +90,25 @@ export async function buildScPdf(d: ScData): Promise<Blob> {
   const cell = { lineColor: black, lineWidth: 0.6, textColor: black, font: "helvetica", fontSize: 8.5, cellPadding: 4, valign: "top" as const };
   const half = (W - 2 * M) / 2;
 
+  // Company logo at the top left, as on the signed contracts
+  let top = 0;
+  if (d.logo) {
+    const maxH = 58, maxW = 150;
+    const r = Math.min(maxH / d.logo.h, maxW / d.logo.w);
+    const lw = d.logo.w * r, lh = d.logo.h * r;
+    doc.addImage(d.logo.data, "PNG", M, 22, lw, lh);
+    top = 22 + lh - 18;
+  }
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
-  doc.text("Sales Contract/Proforma Invoice", W / 2, 44, { align: "center" });
+  doc.text("Sales Contract/Proforma Invoice", W / 2, 44 + top, { align: "center" });
 
   const lines = (rows: (string | null | undefined | false)[]) => rows.filter(Boolean).join("\n");
   const amendments = (d.amendments ?? []).map((a) => `AMENDMENT NO: ${String(a.no).padStart(2, "0")}\nAMENDMENT DATE: ${dmy(a.date)}`).join("\n");
 
   // Exporter | contract refs ; Buyer | bank ; Notify | origin/destination
   autoTable(doc, {
-    startY: 56,
+    startY: 56 + top,
     margin: { left: M, right: M },
     theme: "grid",
     styles: cell,
