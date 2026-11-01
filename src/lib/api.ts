@@ -60,7 +60,7 @@ export function usePendingCounts(enabled = true) {
     queryKey: ["pending-counts"],
     enabled,
     refetchInterval: 60_000,
-    queryFn: () => rpc<{ trades: number; collections: number; incentives: number }>("pending_counts"),
+    queryFn: () => rpc<{ trades: number; collections: number; incentives: number; exp_amounts?: number }>("pending_counts"),
   });
 }
 
@@ -131,7 +131,7 @@ export function useActivity(limit = 12, tradeId?: string) {
 export function useRefresh() {
   const qc = useQueryClient();
   return () => {
-    ["trades", "trade", "exps", "exp", "collections", "incentives", "pending-counts", "activity", "attachments", "demo-count", "contract_documents"].forEach((k) =>
+    ["trades", "trade", "exps", "exp", "collections", "incentives", "pending-counts", "activity", "attachments", "demo-count", "contract_documents", "exp_amount_changes"].forEach((k) =>
       qc.invalidateQueries({ queryKey: [k] }),
     );
   };
@@ -214,6 +214,10 @@ const ACTION_LABEL: Record<string, string> = {
   contract_uploaded: "uploaded sales contract",
   contract_signed: "marked sales contract signed",
   followup_done: "completed follow-up",
+  exp_amount_requested: "requested EXP amount change",
+  exp_amount_approved: "approved EXP amount change",
+  exp_amount_rejected: "rejected EXP amount change",
+  exp_amount_withdrawn: "withdrew EXP amount change",
 };
 export const actionLabel = (a: string) => ACTION_LABEL[a] ?? a.replace(/_/g, " ");
 export const actionTone = (a: string): "ok" | "bad" | "warn" | "info" | "gray" =>

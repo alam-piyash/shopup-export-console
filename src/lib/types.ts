@@ -92,6 +92,31 @@ export type Exp = {
   docs_final: number;
   docs_uploaded: number;
   docs_total?: number;
+  issued_amount?: Num;
+  issued_amount_usd?: Num | null;
+  pending_amount_change_id?: string | null;
+  amount_changes?: number;
+};
+
+export type ExpAmountChange = {
+  id: string;
+  exp_id: string;
+  trade_id: string;
+  old_amount: Num;
+  new_amount: Num;
+  old_amount_usd: Num | null;
+  new_amount_usd: Num | null;
+  reason: string;
+  file_path: string;
+  file_name: string;
+  file_size: number | null;
+  status: ApprovalStatus;
+  requested_by: string | null;
+  created_at: string;
+  approved_by: string | null;
+  approved_at: string | null;
+  rejection_reason: string | null;
+  is_demo: boolean;
 };
 
 export type ExpDoc = {

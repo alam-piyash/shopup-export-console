@@ -15,7 +15,7 @@ import { followupState } from "./contractPanel";
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, key: null },
   { to: "/trades", label: "Trades", icon: ArrowLeftRight, key: "trades" },
-  { to: "/exps", label: "EXPs", icon: FileStack, key: null },
+  { to: "/exps", label: "EXPs", icon: FileStack, key: "exp_amounts" },
   { to: "/collections", label: "Collections", icon: Wallet, key: "collections" },
   { to: "/incentives", label: "Incentives", icon: Coins, key: "incentives" },
   { to: "/masters", label: "Masters", icon: BookUser, key: null },
@@ -123,7 +123,7 @@ function Notifications({ me }: { me: Me | null | undefined }) {
   const { data: recent } = useActivity(10);
   const { data: trades } = useTrades();
   const due = (trades ?? []).filter((t) => t.status === "active" && followupState(t).some((c) => c.due));
-  const adminTotal = isAdmin ? (counts?.trades ?? 0) + (counts?.collections ?? 0) + (counts?.incentives ?? 0) : 0;
+  const adminTotal = isAdmin ? (counts?.trades ?? 0) + (counts?.collections ?? 0) + (counts?.incentives ?? 0) + (counts?.exp_amounts ?? 0) : 0;
   const total = adminTotal + due.length;
   return (
     <P.Root>
@@ -143,6 +143,7 @@ function Notifications({ me }: { me: Me | null | undefined }) {
               ) : (
                 <div className="flex flex-col gap-1.5 text-[0.8438rem]">
                   {counts?.trades ? <Link to="/trades?status=awaiting" className="flex justify-between hover:underline"><span>Trades and amendments</span><span className="num">{counts.trades}</span></Link> : null}
+                  {counts?.exp_amounts ? <Link to="/exps?filter=amount_pending" className="flex justify-between hover:underline"><span>EXP amount changes</span><span className="num">{counts.exp_amounts}</span></Link> : null}
                   {counts?.collections ? <Link to="/collections?status=pending_approval" className="flex justify-between hover:underline"><span>Collections</span><span className="num">{counts.collections}</span></Link> : null}
                   {counts?.incentives ? <Link to="/incentives?status=pending_approval" className="flex justify-between hover:underline"><span>Incentives</span><span className="num">{counts.incentives}</span></Link> : null}
                 </div>

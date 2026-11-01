@@ -167,7 +167,11 @@ function ExpList({ exps, active, onEdit, onAdd }: { exps: Exp[]; active: boolean
             <div className="mb-1.5 flex justify-between text-[0.75rem] text-mut"><span>Documents final</span><span className="num">{e.docs_final}/{e.docs_total ?? EXP_DOCS.length}</span></div>
             <Progress value={(e.docs_final / (e.docs_total ?? EXP_DOCS.length)) * 100} tone={e.docs_final === (e.docs_total ?? EXP_DOCS.length) ? "ok" : "accent"} />
           </div>
-          <div className="md:w-40 md:text-right"><Money bdt={e.amount} usd={e.amount_usd} className="font-semibold md:items-end" /></div>
+          <div className="md:w-40 md:text-right">
+            <Money bdt={e.amount} usd={e.amount_usd} className="font-semibold md:items-end" />
+            {e.issued_amount !== undefined && Number(e.issued_amount) !== Number(e.amount) && <div className="num text-[0.7188rem] text-mut">Issued {bdt(e.issued_amount)}</div>}
+            {e.pending_amount_change_id && <div className="text-[0.7188rem] text-info">Change pending</div>}
+          </div>
           <div className="flex gap-1.5">
             <Button size="sm" variant="outline" onClick={() => onEdit(e)}><Pencil /> Edit</Button>
             <Link to={`/exps/${e.id}`} className="btn btn-outline btn-sm">Documents <ChevronRight /></Link>

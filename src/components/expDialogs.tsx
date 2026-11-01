@@ -95,7 +95,7 @@ export function AddExpDialog({ open, onOpenChange, tradeId: fixedTradeId, availa
         )}
         <Grid>
           <Field
-            label="Amount (BDT)"
+            label="EXP amount (BDT)"
             required
             error={over}
             hint={
@@ -132,10 +132,8 @@ export function AddExpDialog({ open, onOpenChange, tradeId: fixedTradeId, availa
   );
 }
 
-export function EditExpDialog({ exp, available, onClose }: { exp: Exp; available: number; onClose: () => void }) {
+export function EditExpDialog({ exp, onClose }: { exp: Exp; available?: number; onClose: () => void }) {
   const refresh = useRefresh();
-  const [amount, setAmount] = useState(String(exp.amount ?? ""));
-  const [amountUsd, setAmountUsd] = useState(exp.amount_usd == null ? "" : String(exp.amount_usd));
   const [ship, setShip] = useState<ShipFields>({
     shipment_id: exp.shipment_id ?? "",
     exp_no: exp.exp_no ?? "",
@@ -144,14 +142,10 @@ export function EditExpDialog({ exp, available, onClose }: { exp: Exp; available
     shipment_date: exp.shipment_date ?? "",
   });
   const [busy, setBusy] = useState(false);
-  const locked = exp.status === "closed" || exp.trade_status !== "active";
-  const n = Number(amount || 0);
-  const room = available + Number(exp.amount);
-  const over = !locked && n > room + 0.0001;
   async function submit() {
     setBusy(true);
     try {
-      await rpc("update_exp", { p_id: exp.id, p_amount: n, p_fields: { ...ship, amount_usd: amountUsd || null } });
+      await rpc("update_exp", { p_id: exp.id, p_amount: null, p_fields: ship });
       toast.success("EXP updated");
       refresh();
       onClose();
@@ -167,23 +161,22 @@ export function EditExpDialog({ exp, available, onClose }: { exp: Exp; available
       onOpenChange={(o) => !o && onClose()}
       wide
       title={<span className="num">Edit {exp.code}</span>}
-      description={locked ? "Amount is locked. You can still update the shipment details." : "Change the amount or fill in shipment details."}
+      description="Update shipment details. To change the amount, use Change amount on the EXP page (needs a reason, a document and admin approval)."
       footer={
         <>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button disabled={n <= 0 || !!over} loading={busy} onClick={submit}>Save</Button>
+          <Button loading={busy} onClick={submit}>Save</Button>
         </>
       }
     >
       <div className="flex flex-col gap-4">
-        <Grid>
-          <Field label="Amount (BDT)" error={over} hint={!locked ? <>Maximum for this EXP <span className={cn("num", over && "text-bad")}>{bdt(room)}</span></> : "Locked"}>
-            <Input type="number" inputMode="decimal" step="0.01" value={amount} disabled={locked} onChange={(e) => setAmount(e.target.value)} />
-          </Field>
-          <Field label="Amount (USD, optional)" hint={rateHint(amount, amountUsd)}>
-            <Input type="number" inputMode="decimal" step="0.01" value={amountUsd} onChange={(e) => setAmountUsd(e.target.value)} />
-          </Field>
-        </Grid>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-bg p-3.5 text-[0.8125rem]">
+          <span className="text-mut">Amount</span>
+          <span className="num font-medium">
+            {bdt(exp.amount)}
+            {exp.issued_amount !== undefined && Number(exp.issued_amount) !== Number(exp.amount) && <span className="ml-2 font-normal text-mut">issued {bdt(exp.issued_amount)}</span>}
+          </span>
+        </div>
         <ShipmentInputs value={ship} onChange={setShip} advance={exp.type === "advance"} />
       </div>
     </Modal>

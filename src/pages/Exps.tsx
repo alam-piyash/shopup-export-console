@@ -7,7 +7,7 @@ import { EXP_DOCS, useAllExps } from "@/lib/api";
 import { bdt, bdtShort, downloadCsv, fmtDate } from "@/lib/format";
 import { Button, Chip, Empty, Input, Kpi, KpiGrid, LoadingRows, Money, PageHeader, Panel, Segments } from "@/components/ui";
 
-type Filter = "all" | "open" | "closed" | "no_shipment" | "docs_pending" | "uncollected";
+type Filter = "all" | "open" | "closed" | "no_shipment" | "docs_pending" | "uncollected" | "amount_pending";
 
 export default function Exps() {
   const navigate = useNavigate();
@@ -26,6 +26,7 @@ export default function Exps() {
     no_shipment: (e) => e.status === "open" && !e.shipment_id,
     docs_pending: (e) => e.status === "open" && !!e.shipment_id && e.docs_final < (e.docs_total ?? EXP_DOCS.length),
     uncollected: (e) => !e.collection_status,
+    amount_pending: (e) => !!e.pending_amount_change_id,
   };
   const count = (f: Filter) => rows.filter(match[f]).length;
   const ql = q.toLowerCase();
@@ -45,7 +46,7 @@ export default function Exps() {
             onClick={() =>
               downloadCsv(`exps-${new Date().toISOString().slice(0, 10)}.csv`, shown.map((e) => ({
                 Code: e.code, Trade: e.trade_code, Buyer: e.importer_name, Type: e.type, "Shipment ID": e.shipment_id ?? "", "EXP no": e.exp_no ?? "",
-                AWB: e.awb_no ?? "", "Shipment date": e.shipment_date ?? "", "Amount BDT": e.amount, "Amount USD": e.amount_usd ?? "",
+                AWB: e.awb_no ?? "", "Shipment date": e.shipment_date ?? "", "Amount BDT": e.amount, "Amount USD": e.amount_usd ?? "", "Issued BDT": e.issued_amount ?? e.amount, "Issued USD": e.issued_amount_usd ?? "",
                 "Docs final": e.docs_final, Status: e.status, Collection: e.collection_status ?? "", Incentive: e.incentive_status ?? "",
               })))
             }
@@ -81,6 +82,7 @@ export default function Exps() {
               { value: "no_shipment", label: "No shipment", count: count("no_shipment") },
               { value: "uncollected", label: "Uncollected", count: count("uncollected") },
               { value: "closed", label: "Closed", count: count("closed") },
+              ...(count("amount_pending") ? [{ value: "amount_pending" as Filter, label: "Amount change pending", count: count("amount_pending") }] : []),
             ]}
           />
         }
@@ -95,8 +97,8 @@ export default function Exps() {
           <Empty icon={<FileStack />} title={rows.length ? "Nothing here" : "No EXPs yet"} body="EXPs are added from an active trade." />
         ) : (
           <div className="scroll-thin overflow-x-auto">
-            <table className="tbl min-w-[70rem]">
-              <thead><tr>{["EXP", "Type", "Trade", "Buyer", "Shipment ID", "Shipment date", "Amount", "Documents", "Collection", "Status"].map((h) => <th key={h}>{h}</th>)}</tr></thead>
+            <table className="tbl min-w-[76rem]">
+              <thead><tr>{["EXP", "Type", "Trade", "Buyer", "Shipment ID", "Shipment date", "Amount", "Issued on EXP", "Documents", "Collection", "Status"].map((h) => <th key={h}>{h}</th>)}</tr></thead>
               <tbody>
                 {shown.map((e) => (
                   <tr key={e.id} className="cursor-pointer" onClick={() => navigate(`/exps/${e.id}`)}>
@@ -106,7 +108,8 @@ export default function Exps() {
                     <td className="max-w-[13rem] truncate">{e.importer_name}</td>
                     <td className="num">{e.shipment_id || <span className="text-warn">Not set</span>}</td>
                     <td className="num">{e.shipment_date ? fmtDate(e.shipment_date) : <span className="text-mut">Not set</span>}</td>
-                    <td className="num">{bdt(e.amount)}</td>
+                    <td className="num">{bdt(e.amount)}{e.pending_amount_change_id && <span className="ml-1.5 text-[0.7188rem] text-info">change pending</span>}</td>
+                    <td className="num text-mut">{e.issued_amount !== undefined && Number(e.issued_amount) !== Number(e.amount) ? bdt(e.issued_amount) : "Same"}</td>
                     <td className="num">{e.docs_final} / {e.docs_total ?? EXP_DOCS.length} final</td>
                     <td>{e.collection_status ? <Chip label={e.collection_status === "approved" ? "Collected" : "Pending"} tone={e.collection_status === "approved" ? "ok" : "warn"} dot={false} /> : <span className="text-mut">Not collected</span>}</td>
                     <td><Chip status={e.status} /></td>

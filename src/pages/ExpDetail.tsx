@@ -1,19 +1,21 @@
 import { useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, FileText, Loader2, Lock, Pencil, Upload } from "lucide-react";
+import { CheckCircle2, FileText, Loader2, Lock, Pencil, Scale, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { rpc, uploadFile, useRefresh } from "@/lib/api";
-import { bdtShort, errMsg, fmtDate, fmtDateTime } from "@/lib/format";
+import { bdt, bdtShort, errMsg, fmtDate, fmtDateTime } from "@/lib/format";
 import type { Exp, ExpDoc } from "@/lib/types";
 import { Button, Chip, Empty, Kpi, KpiGrid, LoadingRows, Panel, Progress, cn } from "@/components/ui";
 import { FileLink } from "@/components/files";
 import { EditExpDialog } from "@/components/expDialogs";
+import { AmountChangesPanel, ChangeAmountDialog } from "@/components/expAmount";
 
 export default function ExpDetail() {
   const { expId = "" } = useParams();
   const [edit, setEdit] = useState(false);
+  const [changing, setChanging] = useState(false);
   const refresh = useRefresh();
   const { data, isLoading, error } = useQuery({
     queryKey: ["exp", expId],
@@ -22,11 +24,12 @@ export default function ExpDetail() {
       if (error) throw error;
       const [{ data: docs, error: de }, { data: trade, error: te }] = await Promise.all([
         supabase.from("exp_documents").select("*").eq("exp_id", expId).order("sort_order"),
-        supabase.from("trade_overview").select("contract_amount, exp_issued").eq("id", exp.trade_id).single(),
+        supabase.from("trade_overview").select("contract_amount, exp_issued, tolerance_pct, status").eq("id", exp.trade_id).single(),
       ]);
       if (de) throw de;
       if (te) throw te;
-      return { exp: exp as Exp, docs: docs as ExpDoc[], available: Number(trade.contract_amount) - Number(trade.exp_issued) };
+      const limit = Math.round(Number(trade.contract_amount) * (1 + Number(trade.tolerance_pct || 0) / 100) * 100) / 100;
+      return { exp: exp as Exp, docs: docs as ExpDoc[], available: Number(trade.contract_amount) - Number(trade.exp_issued), limitLeft: limit - Number(trade.exp_issued), tradeStatus: trade.status as string };
     },
   });
 
@@ -50,10 +53,21 @@ export default function ExpDetail() {
             {exp.is_demo && <Chip label="Demo" tone="gray" dot={false} />}
           </div>
         </div>
-        <Button variant="outline" onClick={() => setEdit(true)}><Pencil /> Edit EXP</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            disabled={!!exp.pending_amount_change_id || !["active", "closed"].includes(data.tradeStatus)}
+            title={exp.pending_amount_change_id ? "A change is already awaiting approval" : undefined}
+            onClick={() => setChanging(true)}
+          >
+            <Scale /> Change amount
+          </Button>
+          <Button variant="outline" onClick={() => setEdit(true)}><Pencil /> Edit details</Button>
+        </div>
       </div>
 
-      {closed && <div className={cn("banner items-center", finals === total ? "chip-ok" : "chip-warn")}><Lock className="size-4" /> {finals === total ? "All shipment documents are final. This EXP closed automatically and its amount is locked." : `This EXP is closed and its amount is locked. ${total - finals} document${total - finals > 1 ? "s are" : " is"} still missing; upload to complete the file.`}</div>}
+      {exp.pending_amount_change_id && <div className="banner chip-info">An amount change is awaiting admin approval. Totals use the current amount until it is approved.</div>}
+      {closed && <div className={cn("banner items-center", finals === total ? "chip-ok" : "chip-warn")}><Lock className="size-4" /> {finals === total ? "All shipment documents are final. This EXP closed automatically. Use Change amount if the shipped value differs." : `This EXP is closed. ${total - finals} document${total - finals > 1 ? "s are" : " is"} still missing; upload to complete the file.`}</div>}
       {needsShipment && (
         <div className="banner chip-warn flex-wrap items-center justify-between">
           <span>Advance EXP. Add the shipment ID before uploading documents.</span>
@@ -62,7 +76,12 @@ export default function ExpDetail() {
       )}
 
       <KpiGrid cols={4}>
-        <Kpi label="Amount" value={bdtShort(exp.amount)} usdValue={exp.amount_usd} />
+        <Kpi
+          label={exp.amount_changes ? "Amount (updated)" : "Amount"}
+          value={bdtShort(exp.amount)}
+          usdValue={exp.amount_usd}
+          sub={exp.issued_amount !== undefined && Number(exp.issued_amount) !== Number(exp.amount) ? <>Issued on EXP <span className="num">{bdt(exp.issued_amount)}</span></> : "Same as issued on EXP"}
+        />
         <Kpi label="Shipment" value={exp.shipment_id || "Not set"} sub={[exp.awb_no && `AWB ${exp.awb_no}`, exp.flight_no && `Flight ${exp.flight_no}`, exp.shipment_date && fmtDate(exp.shipment_date)].filter(Boolean).join(" · ") || undefined} />
         <Kpi label="Documents final" value={`${finals}/${total}`} sub={<Progress value={(finals / total) * 100} tone={finals === total ? "ok" : "accent"} />} />
         <Kpi
@@ -72,11 +91,13 @@ export default function ExpDetail() {
         />
       </KpiGrid>
 
+      <AmountChangesPanel exp={exp} />
       <Panel title="Documents" right={<span className="text-[0.7812rem] text-mut">Upload, then mark final. Final documents are locked.</span>}>
         <div className="flex flex-col divide-y divide-line/70">
           {docs.map((d, i) => <DocRow key={d.id} n={i + 1} doc={d} disabled={needsShipment} onDone={refresh} />)}
         </div>
       </Panel>
+      {changing && <ChangeAmountDialog exp={exp} limitLeft={data.limitLeft} onClose={() => setChanging(false)} />}
       {edit && <EditExpDialog exp={exp} available={data.available} onClose={() => setEdit(false)} />}
     </>
   );

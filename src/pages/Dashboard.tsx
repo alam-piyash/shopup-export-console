@@ -49,7 +49,8 @@ export default function Dashboard() {
   const pendingTrades = (trades.data ?? []).filter((t) => t.status === "pending_approval" || (t.status === "revision_pending" && t.pending_revision_id));
   const pendingCols = (cols.data ?? []).filter((c) => c.status === "pending_approval");
   const pendingIncs = (incs.data ?? []).filter((i) => i.status === "pending_approval");
-  const approvals = pendingTrades.length + pendingCols.length + pendingIncs.length;
+  const pendingAmounts = (exps.data ?? []).filter((e) => e.pending_amount_change_id);
+  const approvals = pendingTrades.length + pendingCols.length + pendingIncs.length + pendingAmounts.length;
   const loading = trades.isLoading || exps.isLoading;
   const firstName = (me?.full_name || me?.email || "").split(/[ @.]/)[0];
   const hour = new Date().getHours();
@@ -162,7 +163,7 @@ export default function Dashboard() {
       {isAdmin && (
         <Panel title={<span className="flex items-center gap-2">Approval queue {approvals > 0 && <span className="num rounded-md bg-fg px-1.5 text-[0.6875rem] leading-[1.125rem] text-bg">{approvals}</span>}</span>}>
           {approvals === 0 ? (
-            <Empty icon={<CheckCircle2 />} title="All caught up" body="No trades, amendments, collections or incentives are waiting for you." />
+            <Empty icon={<CheckCircle2 />} title="All caught up" body="No trades, amendments, EXP amount changes, collections or incentives are waiting for you." />
           ) : (
             <ul className="divide-y divide-line/70">
               {pendingTrades.map((t) => (
@@ -183,6 +184,10 @@ export default function Dashboard() {
                     )
                   }
                 />
+              ))}
+              {pendingAmounts.map((e) => (
+                <QueueRow key={e.id} kind="EXP amount" code={e.code} title={`${e.trade_code} · ${e.importer_name}`} amount={e.amount} to={`/exps/${e.id}`} who={undefined} when={e.created_at}
+                  actions={<Link to={`/exps/${e.id}`} className="btn btn-outline btn-sm">Review</Link>} />
               ))}
               {pendingCols.map((c) => (
                 <QueueRow key={c.id} kind="Collection" code={c.code} title={`${c.trades?.code} · ${c.trades?.importer_name}`} amount={c.amount} to="/collections?status=pending_approval" who={c.is_demo ? "Demo" : profiles[c.created_by]} when={c.created_at}
