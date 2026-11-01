@@ -9,6 +9,7 @@ import type { Amendment, Attachment, Exp, TradeItem } from "@/lib/types";
 import { ApproveReject, Button, Chip, Confirm, Empty, Kpi, KpiGrid, LoadingRows, Money, Panel, Progress, Row, Tabs, cn } from "@/components/ui";
 import { FileLink } from "@/components/files";
 import { AddExpDialog, EditExpDialog } from "@/components/expDialogs";
+import { ContractVersions, FollowupsPanel } from "@/components/contractPanel";
 
 type Tab = "exps" | "contract" | "amendments" | "activity";
 
@@ -51,6 +52,7 @@ export default function TradeDetail() {
   const available = contract - issued;
   const canClose = isAdmin && t.status === "active" && exps.length > 0 && exps.every((e) => e.status === "closed");
   const exp = daysUntil(t.expiry_date);
+  const needsSigned = t.contract_signed === false;
 
   return (
     <>
@@ -77,11 +79,17 @@ export default function TradeDetail() {
           ) : (
             <Button variant="outline" disabled title="Only active trades without a pending amendment can be revised"><FilePen /> Revise contract</Button>
           )}
-          <Button disabled={t.status !== "active"} onClick={() => setAddOpen(true)}><Plus /> Add EXP</Button>
+          <Button disabled={t.status !== "active" || needsSigned} title={needsSigned ? "Upload the signed sales contract and mark it signed first" : undefined} onClick={() => setAddOpen(true)}><Plus /> Add EXP</Button>
         </div>
       </div>
 
       {t.status === "pending_approval" && <div className="banner chip-warn">This trade is awaiting admin approval. EXPs, collections and incentives open once it is approved.</div>}
+      {needsSigned && !["rejected", "closed"].includes(t.status) && (
+        <div className="banner chip-warn flex-wrap items-center justify-between">
+          <span>No signed sales contract yet. Upload the signed copy and mark it signed before adding EXPs.</span>
+          <Button size="sm" variant="outline" onClick={() => setTab("contract")}>Open sales contract</Button>
+        </div>
+      )}
       {t.status === "revision_pending" && (
         <div className="banner chip-info flex-wrap items-center justify-between">
           <span>A contract amendment is awaiting admin approval. Amounts change only after approval.</span>
@@ -108,7 +116,12 @@ export default function TradeDetail() {
           ]}
         />
         <div className="mt-5">
-          {tab === "exps" && <ExpList exps={exps} active={t.status === "active"} onEdit={setEditExp} onAdd={() => setAddOpen(true)} />}
+          {tab === "exps" && (
+            <div className="flex flex-col gap-5">
+              <ExpList exps={exps} active={t.status === "active" && !needsSigned} onEdit={setEditExp} onAdd={() => setAddOpen(true)} />
+              {(t.status === "active" || t.status === "revision_pending") && <FollowupsPanel trade={t} exps={exps} />}
+            </div>
+          )}
           {tab === "contract" && <ContractTab tradeId={tradeId} />}
           {tab === "amendments" && <AmendmentsTab tradeId={tradeId} />}
           {tab === "activity" && <ActivityTab tradeId={tradeId} />}
@@ -180,12 +193,12 @@ function ContractTab({ tradeId }: { tradeId: string }) {
   const profiles = useProfiles().data ?? {};
   const t = data?.trade;
   if (!t) return null;
-  const contractFile = extra?.files.find((f) => f.entity_type === "trade_contract");
   const extras = Object.entries((t.contract_extra ?? {}) as Record<string, string>);
   const notify = t.notify_parties ?? [];
   const opt = (v?: string | number | null) => (v === null || v === undefined || v === "" ? <span className="text-mut">Not set</span> : String(v));
   return (
     <div className="flex flex-col gap-5">
+      <ContractVersions trade={t} items={extra?.items ?? []} revs={extra?.revs ?? []} />
       <div className="grid gap-5 lg:grid-cols-2">
         <Group title="Sales contract">
           <Row label="SC number" value={<span className="num">{t.sales_contract_no}</span>} />
@@ -197,7 +210,7 @@ function ContractTab({ tradeId }: { tradeId: string }) {
           <Row label="Origin" value={opt(t.country_of_origin)} />
           <Row label="Destination" value={opt(t.country_of_destination)} />
           <Row label="Expiry date" value={t.expiry_date ? fmtDate(t.expiry_date) : opt(null)} />
-          <Row label="Shipment timeline" value={opt(t.shipment_timeline)} />
+          <Row label="Shipment deadline" value={t.shipment_deadline ? fmtDate(t.shipment_deadline) : opt(t.shipment_timeline)} />
           <Row label="Carriage by" value={opt(t.carriage_by)} />
           <Row label="Departure" value={opt(t.departure_port)} />
           <Row label="Point of entry" value={opt(t.point_of_entry)} />
@@ -206,9 +219,6 @@ function ContractTab({ tradeId }: { tradeId: string }) {
           {t.incentive_terms && <Row label="Incentive terms" value={t.incentive_terms} />}
           {extras.map(([k, v]) => <Row key={k} label={k.replace(/_/g, " ")} value={String(v)} />)}
           {t.notes && <p className="mt-3 text-[0.8125rem] text-mut">{t.notes}</p>}
-          <div className="mt-4 border-t border-line pt-3">
-            {contractFile ? <FileLink path={contractFile.file_path} name={contractFile.file_name} size={contractFile.file_size} demo={contractFile.is_demo} /> : <span className="text-[0.8125rem] text-mut">No file</span>}
-          </div>
           <div className="mt-3 text-[0.75rem] text-mut">
             Submitted by {t.is_demo ? "Demo" : profiles[t.created_by] ?? "Unknown"} on {fmtDate(t.created_at)}
             {t.approved_at && ` · ${t.status === "rejected" ? "Rejected" : "Approved"} by ${t.is_demo ? "Demo" : (t.approved_by && profiles[t.approved_by]) ?? "admin"} on ${fmtDate(t.approved_at)}`}

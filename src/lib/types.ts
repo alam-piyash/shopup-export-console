@@ -58,6 +58,12 @@ export type Trade = {
   exp_count: number;
   pending_revision_id: string | null;
   latest_amendment_no: number | null;
+  company_profile_id?: string | null;
+  buyer_id?: string | null;
+  shipment_deadline?: string | null;
+  contract_signed?: boolean;
+  contract_versions?: number;
+  followups_done?: number[] | null;
 };
 
 export type Exp = {

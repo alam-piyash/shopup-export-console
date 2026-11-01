@@ -24,6 +24,7 @@ const IncentiveNew = lazy(() => import("@/pages/IncentiveNew"));
 const CollectionDetail = lazy(() => import("@/pages/CollectionDetail"));
 const IncentiveDetail = lazy(() => import("@/pages/IncentiveDetail"));
 const Access = lazy(() => import("@/pages/Access"));
+const Masters = lazy(() => import("@/pages/Masters"));
 
 function FullLoader() {
   return (
@@ -107,6 +108,7 @@ export default function App() {
       <Route path="/incentives/new" element={<IncentiveNew />} />
       <Route path="/incentives/:incentiveId" element={<IncentiveDetail />} />
       <Route path="/access" element={<AdminOnly><Access /></AdminOnly>} />
+      <Route path="/masters" element={<Masters />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

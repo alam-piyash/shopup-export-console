@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Download, FileStack, Plus, Search } from "lucide-react";
+import { Download, FileStack, FileUp, Plus, Search } from "lucide-react";
 import { AddExpDialog } from "@/components/expDialogs";
+import { BulkExpDialog } from "@/components/bulkExp";
 import { EXP_DOCS, useAllExps } from "@/lib/api";
 import { bdt, bdtShort, downloadCsv, fmtDate } from "@/lib/format";
 import { Button, Chip, Empty, Input, Kpi, KpiGrid, LoadingRows, Money, PageHeader, Panel, Segments } from "@/components/ui";
@@ -15,6 +16,7 @@ export default function Exps() {
   const setFilter = (f: Filter) => setParams(f === "all" ? {} : { filter: f }, { replace: true });
   const [q, setQ] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const { data, isLoading } = useAllExps();
   const rows = (data ?? []).filter((e) => e.trade_status !== "rejected");
   const match: Record<Filter, (e: (typeof rows)[number]) => boolean> = {
@@ -50,6 +52,9 @@ export default function Exps() {
           >
             <Download /> Export
           </Button>
+          <Button variant="outline" onClick={() => setBulkOpen(true)}>
+            <FileUp /> Import
+          </Button>
           <Button onClick={() => setAddOpen(true)}>
             <Plus /> Add EXP
           </Button>
@@ -57,6 +62,7 @@ export default function Exps() {
         }
       />
       <AddExpDialog open={addOpen} onOpenChange={setAddOpen} />
+      <BulkExpDialog open={bulkOpen} onOpenChange={setBulkOpen} />
       <KpiGrid>
         <Kpi label="Total EXPs" value={rows.length} sub={bdtShort(total(rows))} />
         <Kpi label="Open" value={count("open")} sub={bdtShort(total(rows.filter(match.open)))} />

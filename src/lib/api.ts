@@ -131,7 +131,7 @@ export function useActivity(limit = 12, tradeId?: string) {
 export function useRefresh() {
   const qc = useQueryClient();
   return () => {
-    ["trades", "trade", "exps", "exp", "collections", "incentives", "pending-counts", "activity", "attachments", "demo-count"].forEach((k) =>
+    ["trades", "trade", "exps", "exp", "collections", "incentives", "pending-counts", "activity", "attachments", "demo-count", "contract_documents"].forEach((k) =>
       qc.invalidateQueries({ queryKey: [k] }),
     );
   };
@@ -210,10 +210,14 @@ const ACTION_LABEL: Record<string, string> = {
   incentive_rejected: "rejected incentive",
   role_changed: "changed a role",
   access_removed: "removed access",
+  contract_generated: "generated sales contract",
+  contract_uploaded: "uploaded sales contract",
+  contract_signed: "marked sales contract signed",
+  followup_done: "completed follow-up",
 };
 export const actionLabel = (a: string) => ACTION_LABEL[a] ?? a.replace(/_/g, " ");
 export const actionTone = (a: string): "ok" | "bad" | "warn" | "info" | "gray" =>
-  /approved|closed|final/.test(a) ? "ok" : /rejected|removed/.test(a) ? "bad" : /requested|created|submitted/.test(a) ? "warn" : /withdrawn/.test(a) ? "gray" : "info";
+  /approved|closed|final|signed|done/.test(a) ? "ok" : /rejected|removed/.test(a) ? "bad" : /requested|created|submitted/.test(a) ? "warn" : /withdrawn/.test(a) ? "gray" : "info";
 
 export function useCollections() {
   return useQuery({

@@ -3,13 +3,14 @@ import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import * as P from "@radix-ui/react-popover";
 import * as D from "@radix-ui/react-dialog";
-import { ArrowLeftRight, Bell, Coins, FileStack, LayoutDashboard, LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Search, ShieldCheck, Sun, Wallet, X } from "lucide-react";
+import { ArrowLeftRight, Bell, BookUser, Coins, FileStack, LayoutDashboard, LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Search, ShieldCheck, Sun, Wallet, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { actionLabel, actionTone, useActivity, useAllExps, useMe, usePendingCounts, useTrades } from "@/lib/api";
 import { timeAgo } from "@/lib/format";
 import type { Me } from "@/lib/types";
 import { Avatar, cn } from "./ui";
 import { Logo, LogoMark } from "./Logo";
+import { followupState } from "./contractPanel";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, key: null },
@@ -17,6 +18,7 @@ const NAV = [
   { to: "/exps", label: "EXPs", icon: FileStack, key: null },
   { to: "/collections", label: "Collections", icon: Wallet, key: "collections" },
   { to: "/incentives", label: "Incentives", icon: Coins, key: "incentives" },
+  { to: "/masters", label: "Masters", icon: BookUser, key: null },
 ] as const;
 
 export function useTheme() {
@@ -119,7 +121,10 @@ function Notifications({ me }: { me: Me | null | undefined }) {
   const isAdmin = me?.role === "admin";
   const { data: counts } = usePendingCounts(isAdmin);
   const { data: recent } = useActivity(10);
-  const total = isAdmin ? (counts?.trades ?? 0) + (counts?.collections ?? 0) + (counts?.incentives ?? 0) : 0;
+  const { data: trades } = useTrades();
+  const due = (trades ?? []).filter((t) => t.status === "active" && followupState(t).some((c) => c.due));
+  const adminTotal = isAdmin ? (counts?.trades ?? 0) + (counts?.collections ?? 0) + (counts?.incentives ?? 0) : 0;
+  const total = adminTotal + due.length;
   return (
     <P.Root>
       <P.Trigger asChild>
@@ -133,8 +138,8 @@ function Notifications({ me }: { me: Me | null | undefined }) {
           {isAdmin && (
             <div className="border-b border-line p-4">
               <div className="lbl mb-2">Awaiting your approval</div>
-              {total === 0 ? (
-                <p className="text-[0.8125rem] text-mut">Nothing pending. Nice.</p>
+              {adminTotal === 0 ? (
+                <p className="text-[0.8125rem] text-mut">Nothing pending.</p>
               ) : (
                 <div className="flex flex-col gap-1.5 text-[0.8438rem]">
                   {counts?.trades ? <Link to="/trades?status=awaiting" className="flex justify-between hover:underline"><span>Trades and amendments</span><span className="num">{counts.trades}</span></Link> : null}
@@ -142,6 +147,19 @@ function Notifications({ me }: { me: Me | null | undefined }) {
                   {counts?.incentives ? <Link to="/incentives?status=pending_approval" className="flex justify-between hover:underline"><span>Incentives</span><span className="num">{counts.incentives}</span></Link> : null}
                 </div>
               )}
+            </div>
+          )}
+          {due.length > 0 && (
+            <div className="border-b border-line p-4">
+              <div className="lbl mb-2">Shipment follow-ups due</div>
+              <div className="flex flex-col gap-1.5 text-[0.8438rem]">
+                {due.slice(0, 5).map((t) => (
+                  <Link key={t.id} to={`/trades/${t.id}`} className="flex justify-between gap-3 hover:underline">
+                    <span className="truncate"><span className="num">{t.code}</span> · {t.importer_name}</span>
+                    <span className="num shrink-0 text-mut">Day {followupState(t).filter((c) => c.due).slice(-1)[0]?.day}</span>
+                  </Link>
+                ))}
+              </div>
             </div>
           )}
           <div className="p-4">
@@ -243,6 +261,7 @@ const CRUMBS: Record<string, string> = {
   collections: "Collections",
   incentives: "Incentives",
   access: "Access control",
+  masters: "Masters",
   new: "New",
   revise: "Amendment",
 };

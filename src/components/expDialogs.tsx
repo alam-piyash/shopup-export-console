@@ -33,7 +33,7 @@ export function AddExpDialog({ open, onOpenChange, tradeId: fixedTradeId, availa
   const { data: allTrades } = useTrades();
   const [pick, setPick] = useState("");
   const activeTrades = (allTrades ?? [])
-    .filter((t) => t.status === "active")
+    .filter((t) => t.status === "active" && t.contract_signed !== false)
     .map((t) => ({ ...t, left: Number(t.contract_amount) - Number(t.exp_issued ?? 0) }));
   const picked = activeTrades.find((t) => t.id === pick);
   const tradeId = fixedTradeId ?? pick;

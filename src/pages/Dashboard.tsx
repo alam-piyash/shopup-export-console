@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeftRight, CheckCircle2, Coins, Ship, Wallet } from "lucide-react";
 import { EXP_DOCS, actionLabel, actionTone, useActivity, useAllExps, useCollections, useDecide, useIncentives, useMe, useProfiles, useTradeActions, useTrades } from "@/lib/api";
+import { followupState } from "@/components/contractPanel";
 import { bdt, bdtShort, daysUntil, fmtDate, pct, timeAgo } from "@/lib/format";
 import { ApproveReject, Chip, Empty, Kpi, KpiGrid, Panel, Skeleton, cn } from "@/components/ui";
 
@@ -38,7 +39,11 @@ export default function Dashboard() {
     const byBuyer = new Map<string, number>();
     live.forEach((t) => byBuyer.set(t.importer_name, (byBuyer.get(t.importer_name) ?? 0) + Number(t.contract_amount)));
     const buyers = [...byBuyer.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
-    return { live, contract, issued, collected, incApproved, incPending, openExps, noShipment, docsPending, uncollected, expiring, buyers };
+    const followups = live
+      .filter((t) => t.status === "active")
+      .flatMap((t) => followupState(t).filter((c) => c.due).slice(-1).map((c) => ({ t, c })));
+    const unsigned = live.filter((t) => t.status === "active" && t.contract_signed === false);
+    return { live, contract, issued, collected, incApproved, incPending, openExps, noShipment, docsPending, uncollected, expiring, buyers, followups, unsigned };
   }, [trades.data, exps.data, incs.data]);
 
   const pendingTrades = (trades.data ?? []).filter((t) => t.status === "pending_approval" || (t.status === "revision_pending" && t.pending_revision_id));
@@ -104,7 +109,20 @@ export default function Dashboard() {
             <Attn label="EXPs with documents pending" n={s.docsPending.length} to="/exps?filter=docs_pending" />
             <Attn label="EXPs not yet in a collection" n={s.uncollected.length} to="/exps?filter=uncollected" />
             <Attn label="Contracts expiring in 30 days" n={s.expiring.length} to="/trades?status=active" />
+            <Attn label="Shipment follow-ups due" n={s.followups.length} to="/trades?status=active" />
+            <Attn label="Active trades without a signed contract" n={s.unsigned.length} to="/trades?status=active" />
           </ul>
+          {s.followups.length > 0 && (
+            <div className="border-t border-line px-4 py-3">
+              <div className="mb-1.5 text-[0.75rem] text-mut">Follow-ups due</div>
+              {s.followups.slice(0, 4).map(({ t, c }) => (
+                <Link key={t.id} to={`/trades/${t.id}`} className="flex items-center justify-between py-1.5 text-[0.8125rem] hover:underline">
+                  <span className="truncate"><span className="num font-medium">{t.code}</span> · {t.importer_name}</span>
+                  <Chip tone="warn" label={`Day ${c.day} · target ${c.checkpoint * 25}% · issued ${pct(t.exp_issued, t.contract_amount)}%`} dot={false} />
+                </Link>
+              ))}
+            </div>
+          )}
           {s.expiring.length > 0 && (
             <div className="border-t border-line px-4 py-3">
               <div className="mb-1.5 text-[0.75rem] text-mut">Expiring soon</div>
