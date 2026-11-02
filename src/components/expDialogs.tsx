@@ -160,7 +160,7 @@ export function EditExpDialog({ exp, onClose }: { exp: Exp; available?: number; 
       open
       onOpenChange={(o) => !o && onClose()}
       wide
-      title={<span className="num">Edit {exp.code}</span>}
+      title={<span className="code-id">Edit {exp.code}</span>}
       description="Update shipment details. To change the amount, use Change amount on the EXP page (needs a reason, a document and admin approval)."
       footer={
         <>

@@ -72,7 +72,7 @@ export default function Incentives() {
                 <tbody>
                   {visible.map((r) => (
                     <tr key={r.id} className="cursor-pointer" onClick={() => navigate(`/incentives/${r.id}`)}>
-                      <td className="num font-medium">{r.code}</td>
+                      <td className="code-id font-medium">{r.code}</td>
                       <td className="num">{tradesOf(r)}</td>
                       <td className="num">{r.incentive_exps.length}</td>
                       <td className="num">{bdt(r.exp_amount)}</td>
@@ -90,7 +90,7 @@ export default function Incentives() {
             <div className="flex flex-col gap-2.5 p-3 md:hidden">
               {visible.map((r) => (
                 <div key={r.id} className="flex cursor-pointer flex-col gap-2 rounded-xl border border-line bg-bg p-4" onClick={() => navigate(`/incentives/${r.id}`)}>
-                  <div className="flex items-center justify-between"><span className="num font-semibold">{r.code}</span><Chip status={r.status} /></div>
+                  <div className="flex items-center justify-between"><span className="code-id font-semibold">{r.code}</span><Chip status={r.status} /></div>
                   <div className="text-[0.75rem] text-mut">{tradesOf(r)} · FOB {bdt(r.fob)} at {Number(r.incentive_pct)}%</div>
                   <div className="num font-semibold">{bdt(r.incentive_amount)}</div>
                   <div className="empty:hidden">{actions(r)}</div>

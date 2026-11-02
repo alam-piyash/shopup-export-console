@@ -156,7 +156,7 @@ function Notifications({ me }: { me: Me | null | undefined }) {
               <div className="flex flex-col gap-1.5 text-[0.8438rem]">
                 {due.slice(0, 5).map((t) => (
                   <Link key={t.id} to={`/trades/${t.id}`} className="flex justify-between gap-3 hover:underline">
-                    <span className="truncate"><span className="num">{t.code}</span> · {t.importer_name}</span>
+                    <span className="truncate"><span className="code-id">{t.code}</span> · {t.importer_name}</span>
                     <span className="num shrink-0 text-mut">Day {followupState(t).filter((c) => c.due).slice(-1)[0]?.day}</span>
                   </Link>
                 ))}
@@ -174,7 +174,7 @@ function Notifications({ me }: { me: Me | null | undefined }) {
                     <span className={cn("mt-1.5 size-2 shrink-0 rounded-full", { ok: "bg-ok", bad: "bg-bad", warn: "bg-warn", info: "bg-info", gray: "bg-mut" }[actionTone(r.action)])} />
                     <div className="min-w-0">
                       <span className="text-mut">{actionLabel(r.action)}</span>{" "}
-                      {r.details?.code ? <span className="num">{String(r.details.code)}</span> : null}
+                      {r.details?.code ? <span className="code-id">{String(r.details.code)}</span> : null}
                       {r.is_demo && <span className="ml-1.5 text-[0.6875rem] text-mut">(demo)</span>}
                       <div className="text-[0.6875rem] text-mut">{timeAgo(r.created_at)}</div>
                     </div>

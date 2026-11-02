@@ -52,7 +52,7 @@ export function ChangeAmountDialog({ exp, limitLeft, onClose }: { exp: Exp; limi
       open
       onOpenChange={(o) => !o && onClose()}
       wide
-      title={<span className="num">Change amount of {exp.code}</span>}
+      title={<span className="code-id">Change amount of {exp.code}</span>}
       description="Use this when the shipped value differs from the EXP. An admin approves, then all totals use the new amount."
       footer={
         <>

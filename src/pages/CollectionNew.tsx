@@ -122,7 +122,7 @@ export default function CollectionNew() {
                     <label key={e.id} className={cn("sel", on && "on")}>
                       <input type="checkbox" checked={on} onChange={(ev) => setSelected((s) => (ev.target.checked ? [...s, e.id] : s.filter((x) => x !== e.id)))} />
                       <div className="min-w-0 flex-1">
-                        <div className="num font-medium">{e.code}</div>
+                        <div className="code-id font-medium">{e.code}</div>
                         <div className="text-[0.75rem] text-mut">Shipment {e.shipment_id || "not set"}</div>
                       </div>
                       <Chip status={e.status} />

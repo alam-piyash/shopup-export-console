@@ -118,7 +118,7 @@ export default function Dashboard() {
               <div className="mb-1.5 text-[0.75rem] text-mut">Follow-ups due</div>
               {s.followups.slice(0, 4).map(({ t, c }) => (
                 <Link key={t.id} to={`/trades/${t.id}`} className="flex items-center justify-between py-1.5 text-[0.8125rem] hover:underline">
-                  <span className="truncate"><span className="num font-medium">{t.code}</span> · {t.importer_name}</span>
+                  <span className="truncate"><span className="code-id font-medium">{t.code}</span> · {t.importer_name}</span>
                   <Chip tone="warn" label={`Day ${c.day} · target ${c.checkpoint * 25}% · issued ${pct(t.exp_issued, t.contract_amount)}%`} dot={false} />
                 </Link>
               ))}
@@ -129,7 +129,7 @@ export default function Dashboard() {
               <div className="mb-1.5 text-[0.75rem] text-mut">Expiring soon</div>
               {s.expiring.slice(0, 4).map(({ t, d }) => (
                 <Link key={t.id} to={`/trades/${t.id}`} className="flex items-center justify-between py-1.5 text-[0.8125rem] hover:underline">
-                  <span className="truncate"><span className="num font-medium">{t.code}</span> · {t.importer_name}</span>
+                  <span className="truncate"><span className="code-id font-medium">{t.code}</span> · {t.importer_name}</span>
                   <Chip tone={d < 0 ? "bad" : d <= 7 ? "warn" : "gray"} label={d < 0 ? `Expired ${-d}d ago` : `${d}d left`} dot={false} />
                 </Link>
               ))}
@@ -148,7 +148,7 @@ export default function Dashboard() {
                     <span className="font-medium">{a.is_demo ? "Demo" : profiles[a.actor_id ?? ""] ?? "System"}</span>{" "}
                     <span className="text-mut">{actionLabel(a.action)}</span>{" "}
                     {a.details?.code ? (
-                      a.trade_id ? <Link to={`/trades/${a.trade_id}`} className="num font-medium hover:underline">{String(a.details.code)}</Link> : <span className="num font-medium">{String(a.details.code)}</span>
+                      a.trade_id ? <Link to={`/trades/${a.trade_id}`} className="code-id font-medium hover:underline">{String(a.details.code)}</Link> : <span className="code-id font-medium">{String(a.details.code)}</span>
                     ) : null}
                     {a.details?.doc ? <span className="text-mut"> · {String(a.details.doc)}</span> : null}
                   </div>
@@ -324,7 +324,7 @@ function QueueRow({ kind, code, title, amount, to, who, when, actions }: { kind:
       <Link to={to} className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <Chip tone={kind === "Trade" ? "info" : kind === "Amendment" ? "info" : kind === "Collection" ? "ok" : "warn"} label={kind} dot={false} />
-          <span className="num text-[0.8125rem] font-medium">{code}</span>
+          <span className="code-id text-[0.8125rem] font-medium">{code}</span>
           <span className="truncate text-[0.8125rem] text-mut">{title}</span>
         </div>
         <div className="mt-1 text-[0.75rem] text-mut">{who ? `${who} · ` : ""}{fmtDate(when)}</div>

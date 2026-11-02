@@ -79,10 +79,10 @@ export default function Collections() {
                 <tbody>
                   {visible.map((r) => (
                     <tr key={r.id} className="cursor-pointer" onClick={() => navigate(`/collections/${r.id}`)}>
-                      <td className="num font-medium">{r.code}</td>
-                      <td className="num">{r.trades?.code}</td>
+                      <td className="code-id font-medium">{r.code}</td>
+                      <td className="code-id">{r.trades?.code}</td>
                       <td className="max-w-[13rem] truncate">{r.trades?.importer_name}</td>
-                      <td className="num">{r.collection_exps.length === 1 ? r.collection_exps[0].exps?.code : `${r.collection_exps[0]?.exps?.code ?? ""} +${r.collection_exps.length - 1}`}</td>
+                      <td className="code-id">{r.collection_exps.length === 1 ? r.collection_exps[0].exps?.code : `${r.collection_exps[0]?.exps?.code ?? ""} +${r.collection_exps.length - 1}`}</td>
                       <td className="num">{bdt(r.amount)}</td>
                       <td className="max-w-[10rem] truncate">{r.bank_reference || <span className="text-mut">None</span>}</td>
                       <td className="num">{fmtDate(r.created_at)}</td>
@@ -96,9 +96,9 @@ export default function Collections() {
             <div className="flex flex-col gap-2.5 p-3 md:hidden">
               {visible.map((r) => (
                 <div key={r.id} className="flex cursor-pointer flex-col gap-2 rounded-xl border border-line bg-bg p-4" onClick={() => navigate(`/collections/${r.id}`)}>
-                  <div className="flex items-center justify-between"><span className="num font-semibold">{r.code}</span><Chip status={r.status} /></div>
+                  <div className="flex items-center justify-between"><span className="code-id font-semibold">{r.code}</span><Chip status={r.status} /></div>
                   <div className="text-[0.75rem] text-mut">{r.trades?.code} · {r.trades?.importer_name}</div>
-                  <div className="num text-[0.75rem] text-mut">{r.collection_exps.map((c) => c.exps?.code).join(", ")}</div>
+                  <div className="code-id text-[0.75rem] text-mut">{r.collection_exps.map((c) => c.exps?.code).join(", ")}</div>
                   <Money bdt={r.amount} usd={r.amount_usd} className="font-semibold" />
                   <div className="empty:hidden">{actions(r)}</div>
                 </div>

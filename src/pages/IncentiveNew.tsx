@@ -93,7 +93,7 @@ export default function IncentiveNew() {
                         }}
                       />
                       <div className="min-w-0 flex-1">
-                        <div className="num font-medium">{t.code}</div>
+                        <div className="code-id font-medium">{t.code}</div>
                         <div className="truncate text-[0.75rem] text-mut">{t.importer}</div>
                       </div>
                       <Chip label={`${t.count} EXP`} tone="gray" dot={false} />
@@ -113,7 +113,7 @@ export default function IncentiveNew() {
                     <label key={e.id} className={cn("sel", on && "on")}>
                       <input type="checkbox" checked={on} onChange={(ev) => setSelected((s) => (ev.target.checked ? [...s, e.id] : s.filter((x) => x !== e.id)))} />
                       <div className="min-w-0 flex-1">
-                        <div className="num font-medium">{e.code}</div>
+                        <div className="code-id font-medium">{e.code}</div>
                         <div className="text-[0.75rem] text-mut">{e.trade_code} · {e.collection_code}</div>
                       </div>
                       <Chip label="Collected" tone="ok" />

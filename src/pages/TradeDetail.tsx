@@ -59,7 +59,7 @@ export default function TradeDetail() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="num text-[0.8125rem] text-mut">{t.code} · SC {t.sales_contract_no}</span>
+            <span className="code-id text-[0.8125rem] text-mut">{t.code} · SC {t.sales_contract_no}</span>
             <Chip status={t.status} />
             {t.is_demo && <Chip label="Demo" tone="gray" dot={false} />}
             {t.latest_amendment_no ? <Chip label={`Amendment ${t.latest_amendment_no}`} tone="info" dot={false} /> : null}
@@ -153,7 +153,7 @@ function ExpList({ exps, active, onEdit, onAdd }: { exps: Exp[]; active: boolean
         <div key={e.id} className="card flex flex-col gap-4 p-4 transition hover:border-mut/40 md:flex-row md:items-center">
           <Link to={`/exps/${e.id}`} className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="num font-semibold">{e.code}</span>
+              <span className="code-id font-semibold">{e.code}</span>
               <Chip status={e.status} />
               {e.type === "advance" && <Chip label="Advance" tone="info" dot={false} />}
               {e.collection_status && <Chip label={e.collection_status === "approved" ? "Collected" : "Collection pending"} tone={e.collection_status === "approved" ? "ok" : "warn"} />}
@@ -206,7 +206,7 @@ function ContractTab({ tradeId }: { tradeId: string }) {
       <ContractVersions trade={t} items={extra?.items ?? []} revs={extra?.revs ?? []} />
       <div className="grid gap-5 lg:grid-cols-2">
         <Group title="Sales contract">
-          <Row label="SC number" value={<span className="num">{t.sales_contract_no}</span>} />
+          <Row label="SC number" value={<span className="code-id">{t.sales_contract_no}</span>} />
           <Row label="Contract date" value={fmtDate(t.contract_date)} />
           <Row label="Total CFR amount" value={<Money bdt={t.contract_amount} usd={t.contract_amount_usd} align="end" />} />
           {t.exchange_rate && <Row label="Exchange rate" value={`৳${Number(t.exchange_rate)} per USD`} />}
@@ -267,7 +267,7 @@ function ContractTab({ tradeId }: { tradeId: string }) {
                   <tr key={i.id}>
                     <td className="font-medium">{i.description}</td>
                     <td className="text-mut">{i.carton_size}</td>
-                    <td className="num">{i.hs_code}</td>
+                    <td className="code-id">{i.hs_code}</td>
                     <td>{i.incoterm}</td>
                     <td className="num">{Number(i.quantity_kg).toLocaleString("en-US")}</td>
                     <td className="num">{bdt(i.rate_per_kg)}{i.rate_usd_per_kg ? <div className="text-[0.7188rem] text-mut">{usd(i.rate_usd_per_kg)}</div> : null}</td>

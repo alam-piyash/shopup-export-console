@@ -95,7 +95,7 @@ export default function TradeRevise() {
 
   return (
     <>
-      <PageHeader title={<>Revise contract <span className="num text-mut">· {t.code}</span></>} sub={`SC ${t.sales_contract_no}. Nothing changes until an admin approves. Closed EXPs are locked.`} />
+      <PageHeader title={<>Revise contract <span className="code-id text-mut">· {t.code}</span></>} sub={`SC ${t.sales_contract_no}. Nothing changes until an admin approves. Closed EXPs are locked.`} />
       <div className="grid items-start gap-6 lg:grid-cols-[1fr_340px]">
         <div className="flex min-w-0 flex-col gap-5">
           <Section step={1} title="Amendment">
@@ -150,7 +150,7 @@ export default function TradeRevise() {
                     <div key={e.id} className={cn("sel cursor-default", changed && "on")}>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="num text-[0.8438rem] font-medium">{e.code}</span>
+                          <span className="code-id text-[0.8438rem] font-medium">{e.code}</span>
                           <Chip status={e.status} />
                           {changed && <Chip label="Changed" tone="info" dot={false} />}
                         </div>

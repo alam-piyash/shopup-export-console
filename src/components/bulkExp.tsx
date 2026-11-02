@@ -184,10 +184,10 @@ export function BulkExpDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                 {rows.map((r) => (
                   <tr key={r.n}>
                     <td className="num text-mut">{r.n}</td>
-                    <td className="num">{r.tradeCode ?? r["SC number"]}</td>
-                    <td className="num">{r["Shipment ID"] || (r.advance ? <span className="text-mut">Advance</span> : "")}</td>
-                    <td className="num">{r["EXP number"]}</td>
-                    <td className="num">{r.date}</td>
+                    <td className="code-id">{r.tradeCode ?? r["SC number"]}</td>
+                    <td className="code-id">{r["Shipment ID"] || (r.advance ? <span className="text-mut">Advance</span> : "")}</td>
+                    <td className="code-id">{r["EXP number"]}</td>
+                    <td className="code-id">{r.date}</td>
                     <td className="num">{r.amount ? bdt(r.amount) : ""}</td>
                     <td className="max-w-[16rem]">
                       {r.result === "ok" ? <Chip label="Created" tone="ok" /> : r.result ? <span className="text-[0.75rem] text-bad">{r.result}</span> : r.errors.length ? <span className="text-[0.75rem] text-bad">{r.errors.join(". ")}</span> : <Chip label="Ready" tone="info" dot={false} />}

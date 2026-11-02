@@ -20,9 +20,9 @@ export default function IncentiveDetail() {
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <div className="num text-[0.8125rem] text-mut">{trades.map((t) => `${t?.code} · ${t?.importer_name}`).join(", ")}</div>
+          <div className="code-id text-[0.8125rem] text-mut">{trades.map((t) => `${t?.code} · ${t?.importer_name}`).join(", ")}</div>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <h1 className="h1 num">{r.code}</h1>
+            <h1 className="h1 code-id">{r.code}</h1>
             <Chip status={r.status} />
             {r.is_demo && <Chip label="Demo" tone="gray" dot={false} />}
           </div>
@@ -59,7 +59,7 @@ export default function IncentiveDetail() {
             <ul className="divide-y divide-line/70">
               {r.incentive_exps.map((e) => (
                 <li key={e.exps?.code} className="flex items-center justify-between gap-3 px-4 py-2.5">
-                  <span className="num min-w-0 truncate text-[0.8438rem]">{e.exps?.code} <span className="text-mut">· {e.exps?.trades?.code}</span></span>
+                  <span className="code-id min-w-0 truncate text-[0.8438rem]">{e.exps?.code} <span className="text-mut">· {e.exps?.trades?.code}</span></span>
                   <span className="num shrink-0 text-[0.8438rem]">{bdt(e.amount)}</span>
                 </li>
               ))}

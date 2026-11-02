@@ -46,9 +46,9 @@ export default function ExpDetail() {
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <Link to={`/trades/${exp.trade_id}`} className="num text-[0.8125rem] text-mut hover:text-accent">{exp.trade_code} · {exp.importer_name}</Link>
+          <Link to={`/trades/${exp.trade_id}`} className="code-id text-[0.8125rem] text-mut hover:text-accent">{exp.trade_code} · {exp.importer_name}</Link>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <h1 className="h1 num">{exp.code}</h1>
+            <h1 className="h1 code-id">{exp.code}</h1>
             <Chip status={exp.status} />
             {exp.type === "advance" && <Chip label="Advance" tone="info" dot={false} />}
             {exp.is_demo && <Chip label="Demo" tone="gray" dot={false} />}
@@ -88,7 +88,7 @@ export default function ExpDetail() {
         <Kpi
           label="Collection"
           value={exp.collection_status === "approved" ? "Collected" : exp.collection_status ? "Pending" : "Not yet"}
-          sub={exp.collection_code ? <span className="num">{exp.collection_code}</span> : exp.exp_no ? `EXP no ${exp.exp_no}` : undefined}
+          sub={exp.collection_code ? <span className="code-id">{exp.collection_code}</span> : exp.exp_no ? `EXP no ${exp.exp_no}` : undefined}
         />
       </KpiGrid>
 

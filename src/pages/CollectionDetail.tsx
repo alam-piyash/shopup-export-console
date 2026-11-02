@@ -19,9 +19,9 @@ export default function CollectionDetail() {
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <Link to={`/trades/${c.trade_id}`} className="num text-[0.8125rem] text-mut hover:text-accent">{c.trades?.code} · {c.trades?.importer_name}</Link>
+          <Link to={`/trades/${c.trade_id}`} className="code-id text-[0.8125rem] text-mut hover:text-accent">{c.trades?.code} · {c.trades?.importer_name}</Link>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <h1 className="h1 num">{c.code}</h1>
+            <h1 className="h1 code-id">{c.code}</h1>
             <Chip status={c.status} />
             {c.is_demo && <Chip label="Demo" tone="gray" dot={false} />}
           </div>
@@ -44,7 +44,7 @@ export default function CollectionDetail() {
             <div className="px-4 py-2">
               <Row label="Amount received" value={<Money bdt={c.amount} usd={c.amount_usd} align="end" />} />
               <Row label="Bank reference" value={c.bank_reference || "None"} />
-              <Row label="Trade" value={<Link to={`/trades/${c.trade_id}`} className="num hover:text-accent">{c.trades?.code}</Link>} />
+              <Row label="Trade" value={<Link to={`/trades/${c.trade_id}`} className="code-id hover:text-accent">{c.trades?.code}</Link>} />
               <Row label="Status" value={<Chip status={c.status} />} />
               {c.approved_at && <Row label={c.status === "rejected" ? "Rejected on" : "Approved on"} value={fmtDate(c.approved_at)} />}
             </div>
@@ -53,7 +53,7 @@ export default function CollectionDetail() {
             <ul className="divide-y divide-line/70">
               {c.collection_exps.map((x) => (
                 <li key={x.exps?.code} className="flex items-center justify-between gap-3 px-4 py-2.5">
-                  <span className="num text-[0.8438rem]">{x.exps?.code}</span>
+                  <span className="code-id text-[0.8438rem]">{x.exps?.code}</span>
                   <span className="num text-[0.8438rem]">{bdt(x.amount)}</span>
                 </li>
               ))}

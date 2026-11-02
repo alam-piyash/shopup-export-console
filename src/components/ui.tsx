@@ -124,8 +124,8 @@ export function Kpi({ label, value, sub, usdValue, icon, tone }: { label: string
         {icon && <span className="text-mut [&_svg]:size-4">{icon}</span>}
       </div>
       <div className="min-w-0">
-        <div className="num truncate text-[1.5rem] font-semibold leading-tight tracking-tight">{value}</div>
-        {line && <div className="num mt-0.5 text-[0.7812rem] text-mut">{line}</div>}
+        <div className={cn(typeof value === "string" && value.includes("-") ? "code-id" : "num", "truncate text-[1.5rem] font-semibold leading-tight tracking-tight")}>{value}</div>
+        {line && <div className={cn(typeof line === "string" && line.includes("-") ? "code-id" : "num", "mt-0.5 text-[0.7812rem] text-mut")}>{line}</div>}
       </div>
       {sub && <div className="text-[0.7812rem] text-mut">{sub}</div>}
     </div>

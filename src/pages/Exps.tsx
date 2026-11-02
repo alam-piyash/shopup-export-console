@@ -102,11 +102,11 @@ export default function Exps() {
               <tbody>
                 {shown.map((e) => (
                   <tr key={e.id} className="cursor-pointer" onClick={() => navigate(`/exps/${e.id}`)}>
-                    <td className="num font-medium">{e.code}</td>
+                    <td className="code-id font-medium">{e.code}</td>
                     <td>{e.type === "advance" ? "Advance" : "Regular"}</td>
-                    <td className="num">{e.trade_code}</td>
+                    <td className="code-id">{e.trade_code}</td>
                     <td className="max-w-[13rem] truncate">{e.importer_name}</td>
-                    <td className="num">{e.shipment_id || <span className="text-warn">Not set</span>}</td>
+                    <td className="code-id">{e.shipment_id || <span className="text-warn">Not set</span>}</td>
                     <td className="num">{e.shipment_date ? fmtDate(e.shipment_date) : <span className="text-mut">Not set</span>}</td>
                     <td className="num">{bdt(e.amount)}{e.pending_amount_change_id && <span className="ml-1.5 text-[0.7188rem] text-info">change pending</span>}</td>
                     <td className="num text-mut">{e.issued_amount !== undefined && Number(e.issued_amount) !== Number(e.amount) ? bdt(e.issued_amount) : "Same"}</td>

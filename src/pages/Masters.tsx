@@ -203,8 +203,8 @@ export default function Masters() {
                     <td className="font-medium">{p.label}</td>
                     <td>{p.legal_name}</td>
                     <td>{[p.bank_name, p.bank_branch].filter(Boolean).join(", ")}</td>
-                    <td className="num">{p.bank_account_no}</td>
-                    <td className="num">{p.sc_prefix}</td>
+                    <td className="code-id">{p.bank_account_no}</td>
+                    <td className="code-id">{p.sc_prefix}</td>
                     <td>{p.signatory_name}</td>
                     <td>{p.is_default ? <Chip label="Default" tone="info" dot={false} /> : p.is_active ? <Chip label="Active" tone="ok" dot={false} /> : <Chip label="Archived" tone="gray" dot={false} />}</td>
                   </tr>
@@ -241,7 +241,7 @@ export default function Masters() {
                 {products.data.map((p) => (
                   <tr key={p.id} className="cursor-pointer" onClick={() => open("products", p as unknown as Rec)}>
                     <td className="font-medium">{p.description}</td>
-                    <td className="num">{p.hs_code}</td>
+                    <td className="code-id">{p.hs_code}</td>
                     <td>{p.carton_size}</td>
                     <td>{p.incoterm}</td>
                     <td className="num">{p.rate_usd_per_kg ? `$${Number(p.rate_usd_per_kg).toFixed(2)}` : ""}</td>

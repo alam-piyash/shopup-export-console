@@ -123,8 +123,8 @@ export default function Trades() {
                 <tbody>
                   {shown.map((t) => (
                     <tr key={t.id} className="cursor-pointer" onClick={() => open(t)}>
-                      <td className="num font-medium">{t.code}</td>
-                      <td className="num">{t.sales_contract_no}</td>
+                      <td className="code-id font-medium">{t.code}</td>
+                      <td className="code-id">{t.sales_contract_no}</td>
                       <td className="max-w-[13rem] truncate">{t.importer_name}{t.is_demo && <span className="ml-1.5 text-mut">(demo)</span>}</td>
                       <td className="num">{fmtDate(t.contract_date)}</td>
                       <td className="num">{bdt(t.contract_amount)}</td>
@@ -143,7 +143,7 @@ export default function Trades() {
               {shown.map((t) => (
                 <div key={t.id} className="flex cursor-pointer flex-col gap-3 rounded-xl border border-line bg-bg p-4" onClick={() => open(t)}>
                   <div className="flex items-center justify-between gap-2">
-                    <span className="num font-semibold">{t.code}</span>
+                    <span className="code-id font-semibold">{t.code}</span>
                     <Chip status={t.status} />
                   </div>
                   <div className="min-w-0">
