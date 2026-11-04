@@ -19,7 +19,7 @@ export default {
         info: "rgb(var(--info) / <alpha-value>)",
       },
       fontFamily: {
-        sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        sans: ["Inter", "'Noto Sans Bengali'", "ui-sans-serif", "system-ui", "sans-serif"],
         mono: ["'JetBrains Mono'", "ui-monospace", "monospace"],
       },
       borderRadius: { xl: "14px", "2xl": "18px" },

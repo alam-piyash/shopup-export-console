@@ -45,7 +45,7 @@ function useSignOut() {
 
 function Brand({ collapsed }: { collapsed?: boolean }) {
   return (
-    <Link to="/" className={cn("flex items-center", collapsed ? "justify-center" : "px-1")} title="ShopUp Export Console">
+    <Link to="/" className={cn("flex items-center", collapsed ? "justify-center" : "px-1.5")} title="ShopUp Export Console">
       {collapsed ? <LogoMark size={32} /> : <Logo size={32} />}
     </Link>
   );
@@ -104,7 +104,7 @@ function UserCard({ me, collapsed }: { me: Me | null | undefined; collapsed?: bo
     );
   }
   return (
-    <div className="flex items-center gap-2.5 border-t border-line px-1 pt-3">
+    <div className="-mx-3 flex items-center gap-2.5 border-t border-line px-4 pt-3">
       <Avatar name={me?.full_name || me?.email} src={me?.avatar_url} size={30} />
       <div className="min-w-0 flex-1">
         <div className="truncate text-[0.8125rem] font-medium">{me?.full_name || me?.email}</div>
@@ -308,16 +308,21 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const sidebar = (onNavigate?: () => void, small = false) => (
     <>
-      <div className={cn("flex items-center gap-2 border-b border-line pb-4", small ? "flex-col" : "")}>
-        <div className="min-w-0 flex-1"><Brand collapsed={small} /></div>
-        {!onNavigate && (
-          <button className="btn btn-ghost btn-icon h-8 w-8 text-mut" onClick={toggleSidebar} aria-label={small ? "Expand sidebar" : "Collapse sidebar"} title={small ? "Expand sidebar" : "Collapse sidebar"}>
-            {small ? <PanelLeftOpen /> : <PanelLeftClose />}
+      <div className={cn("-mx-3 flex h-14 shrink-0 items-center gap-2 border-b border-line px-3", small && "justify-center")}>
+        <div className={cn("min-w-0", !small && "flex-1")}><Brand collapsed={small} /></div>
+        {!onNavigate && !small && (
+          <button className="btn btn-ghost btn-icon h-8 w-8 text-mut" onClick={toggleSidebar} aria-label="Collapse sidebar" title="Collapse sidebar">
+            <PanelLeftClose />
           </button>
         )}
       </div>
       <NavList me={me} onNavigate={onNavigate} collapsed={small} />
       <div className="mt-auto flex flex-col gap-2">
+        {!onNavigate && small && (
+          <button className="btn btn-ghost btn-icon mx-auto h-8 w-8 text-mut" onClick={toggleSidebar} aria-label="Expand sidebar" title="Expand sidebar">
+            <PanelLeftOpen />
+          </button>
+        )}
         <UserCard me={me} collapsed={small} />
       </div>
     </>
@@ -325,10 +330,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
-      <aside className={cn("sticky top-0 hidden h-screen shrink-0 flex-col gap-5 border-r border-line bg-surface px-3 py-4 transition-[width] duration-200 lg:flex", collapsed ? "w-[4.25rem]" : "w-[15rem]")}>{sidebar(undefined, collapsed)}</aside>
+      <aside className={cn("sticky top-0 hidden h-screen shrink-0 flex-col gap-5 border-r border-line bg-surface px-3 pb-4 transition-[width] duration-200 lg:flex", collapsed ? "w-[4.25rem]" : "w-[15rem]")}>{sidebar(undefined, collapsed)}</aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-line bg-bg/85 px-3 backdrop-blur-md sm:px-6">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-line bg-bg/85 px-3 backdrop-blur-md sm:px-6 lg:px-8">
           <button className="btn btn-ghost btn-icon lg:hidden" onClick={() => setOpen(true)} aria-label="Open menu"><Menu /></button>
           <div className="min-w-0 flex-1"><Breadcrumb /></div>
           <button
@@ -349,8 +354,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       {open && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
-          <div className="absolute inset-y-0 left-0 flex w-[17rem] max-w-[85%] animate-in flex-col gap-5 overflow-y-auto border-r border-line bg-surface px-3 py-4">
-            <button className="btn btn-ghost btn-icon absolute right-2 top-4" onClick={() => setOpen(false)} aria-label="Close menu"><X /></button>
+          <div className="absolute inset-y-0 left-0 flex w-[17rem] max-w-[85%] animate-in flex-col gap-5 overflow-y-auto border-r border-line bg-surface px-3 pb-4">
+            <button className="btn btn-ghost btn-icon absolute right-2 top-2.5 z-10" onClick={() => setOpen(false)} aria-label="Close menu"><X /></button>
             {sidebar(() => setOpen(false))}
           </div>
         </div>

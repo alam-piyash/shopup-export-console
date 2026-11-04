@@ -80,7 +80,7 @@ export default function Dashboard() {
         </KpiGrid>
       )}
 
-      <div className="grid gap-5 xl:grid-cols-[1.6fr_1fr]">
+      <div className="grid items-start gap-5 xl:grid-cols-[1.6fr_1fr]">
         <Panel title="Top buyers" right={<Link to="/trades" className="text-[0.7812rem] text-mut hover:text-fg">All trades</Link>}>
           <BuyerTable live={s.live} />
         </Panel>

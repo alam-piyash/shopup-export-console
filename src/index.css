@@ -86,7 +86,12 @@
   .sel { @apply flex cursor-pointer items-center gap-3 rounded-lg border border-line bg-bg px-3.5 py-3 transition hover:border-mut/50; }
   .sel.on { @apply border-fg bg-raised; }
   .sel input[type="checkbox"] { @apply size-4 accent-[rgb(var(--accent))]; }
-  .banner { @apply flex items-start gap-2.5 rounded-xl px-4 py-3 text-[0.8125rem]; }
+  .banner { @apply flex items-start gap-2.5 rounded-xl border border-line bg-raised px-4 py-3 text-[0.8125rem] leading-relaxed; }
+  .banner > svg { @apply mt-0.5 size-4 shrink-0; }
+  .banner.chip-ok { @apply border-ok/30 bg-ok/[0.06]; }
+  .banner.chip-warn { @apply border-warn/35 bg-warn/[0.07]; }
+  .banner.chip-bad { @apply border-bad/30 bg-bad/[0.06]; }
+  .banner.chip-info { @apply border-info/25 bg-info/[0.06]; }
 
 
 
