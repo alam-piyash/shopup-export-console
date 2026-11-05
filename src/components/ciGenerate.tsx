@@ -35,6 +35,7 @@ async function loadSources(exp: Exp) {
   ]);
   if (te) throw te;
   if (ie) throw ie;
+  if (!trade) throw new Error("Trade not found for this EXP");
   // TT voucher on the EXP's collection (pending or approved), newest first
   const cols = ((links ?? []) as unknown as { collection_id: string; collections: { status: string; created_at: string } | null }[])
     .filter((l) => l.collections && l.collections.status !== "rejected")
@@ -69,6 +70,9 @@ export function GenerateCiDialog({ exp, docs, onClose }: { exp: Exp; docs: ExpDo
   const [vat, setVat] = useState(remember("vat") || "002726427-0101");
   const [prefix, setPrefix] = useState(remember("exp-prefix") || "1475");
   const [busy, setBusy] = useState(false);
+  /** Per item: included, and the KG from the Plants sheet (defaults to the contract quantity). */
+  const [lineKg, setLineKg] = useState<Record<number, string>>({});
+  const [skip, setSkip] = useState<number[]>([]);
 
   useEffect(() => {
     if (!src) return;
@@ -77,7 +81,8 @@ export function GenerateCiDialog({ exp, docs, onClose }: { exp: Exp; docs: ExpDo
   }, [src]);
 
   const netKg = Number(net || 0), ctn = Number(cartons || 0), grossKg = Number(gross || 0);
-  const lines = useMemo(() => (src?.items ?? []).map((i) => ({ description: i.description, qty: Number(i.quantity_kg || 0) })), [src]);
+  const allLines = useMemo(() => (src?.items ?? []).map((i) => ({ description: i.description, qty: Number(i.quantity_kg || 0) })), [src]);
+  const lines = allLines.map((l, i) => ({ ...l, qty: lineKg[i] !== undefined ? Number(lineKg[i] || 0) : l.qty })).filter((_, i) => !skip.includes(i));
   const { rows, scalePct } = packingRows(lines.length ? lines : [{ description: goods || "Goods", qty: netKg || 1 }], netKg, ctn, grossKg);
   const expNo = exp.exp_serial && exp.exp_year ? [prefix.trim(), exp.exp_serial, exp.exp_year].filter(Boolean).join("-") : exp.exp_no ?? "";
 
@@ -200,8 +205,22 @@ export function GenerateCiDialog({ exp, docs, onClose }: { exp: Exp; docs: ExpDo
           <div className="rounded-xl border border-line">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-3.5 py-2.5 text-[0.8125rem]">
               <span className="flex items-center gap-2 font-medium"><FileText className="size-4 text-mut" /> Packing list preview</span>
-              {lines.length > 0 && netKg > 0 && Math.abs(scalePct) > 0 && <span className={cn("text-[0.75rem]", Math.abs(scalePct) > 10 ? "text-warn" : "text-mut")}>Item weights scaled {scalePct > 0 ? "up" : "down"} {Math.abs(scalePct)}% to match the net weight{Math.abs(scalePct) > 10 ? " (over 10%, check it)" : ""}</span>}
+              {Object.keys(lineKg).length > 0 && netKg > 0 && Math.abs(scalePct) > 0 && <span className={cn("text-[0.75rem]", Math.abs(scalePct) > 10 ? "text-warn" : "text-mut")}>Item KG scaled {scalePct > 0 ? "up" : "down"} {Math.abs(scalePct)}% to match the net weight{Math.abs(scalePct) > 10 ? " (over 10%, check it)" : ""}</span>}
             </div>
+            {allLines.length > 1 && (
+              <div className="border-b border-line px-3.5 py-2.5">
+                <p className="mb-2 text-[0.75rem] text-mut">Items on this shipment. Untick items not shipped, and type the KG from the Plants sheet if you have it; weights are scaled to the net weight and cartons and gross are split to match the totals.</p>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {allLines.map((l, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <input type="checkbox" checked={!skip.includes(i)} onChange={(e) => setSkip((s) => (e.target.checked ? s.filter((x) => x !== i) : [...s, i]))} aria-label={`Include ${l.description}`} />
+                      <span className="min-w-0 flex-1 truncate text-[0.8125rem]">{l.description}</span>
+                      <Input className="h-8 w-28 text-right" type="number" inputMode="decimal" disabled={skip.includes(i)} value={lineKg[i] ?? ""} placeholder={`${l.qty} KG`} onChange={(e) => setLineKg((s) => ({ ...s, [i]: e.target.value }))} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <table className="tbl">
               <thead><tr>{["SL", "Cartons", "Description", "Net KG", "Gross KG"].map((h) => <th key={h}>{h}</th>)}</tr></thead>
               <tbody>
