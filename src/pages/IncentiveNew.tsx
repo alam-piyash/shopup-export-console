@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Send } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { INCENTIVE_DOCS, rpc, useRefresh } from "@/lib/api";
+import { INCENTIVE_DOCS, rpc, selectAll, useRefresh } from "@/lib/api";
 import { money, calcIncentive, errMsg } from "@/lib/format";
 import type { Exp, UploadedFile } from "@/lib/types";
 import { Button, Chip, Field, Grid, Input, PageHeader, Row, Section, cn } from "@/components/ui";
@@ -27,9 +27,7 @@ export default function IncentiveNew() {
   const { data: eligible, isLoading } = useQuery({
     queryKey: ["exps", "incentive-eligible"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("exp_overview").select("*").eq("collection_status", "approved").is("incentive_status", null).order("created_at");
-      if (error) throw error;
-      return data as Exp[];
+      return selectAll<Exp>(() => supabase.from("exp_overview").select("*").eq("collection_status", "approved").is("incentive_status", null).order("created_at").order("id"));
     },
   });
   const tradeList = useMemo(() => {

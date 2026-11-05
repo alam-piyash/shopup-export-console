@@ -5,6 +5,7 @@ import { useCollections, useDecide, useIsAdmin } from "@/lib/api";
 import { money, moneyShort, downloadCsv, fmtDate } from "@/lib/format";
 import type { Collection } from "@/lib/types";
 import { ApproveReject, Button, Chip, Empty, Input, Kpi, KpiGrid, LoadingRows, Money, PageHeader, Panel, Row, Segments } from "@/components/ui";
+import { ScProgress } from "@/components/scProgress";
 
 type Filter = "all" | "pending_approval" | "approved" | "rejected";
 
@@ -48,6 +49,7 @@ export default function Collections() {
           </>
         }
       />
+      <ScProgress mode="collection" />
       <KpiGrid cols={3}>
         <Kpi label="Approved" value={moneyShort(sumBy("approved", "amount"))} usdValue={sumBy("approved", "amount_usd")} sub={`${count("approved")} collections`} />
         <Kpi label="Pending" value={moneyShort(sumBy("pending_approval", "amount"))} usdValue={sumBy("pending_approval", "amount_usd")} sub={`${count("pending_approval")} waiting for an admin`} />

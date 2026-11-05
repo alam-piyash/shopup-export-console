@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Send, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { COLLECTION_DOCS, rpc, useRefresh } from "@/lib/api";
+import { COLLECTION_DOCS, rpc, selectAll, useRefresh } from "@/lib/api";
 import { money, cents, errMsg } from "@/lib/format";
 import type { Exp, UploadedFile } from "@/lib/types";
 import { Button, Chip, Field, Grid, Input, PageHeader, Row, Section, cn } from "@/components/ui";
@@ -35,9 +35,7 @@ export default function CollectionNew() {
     queryKey: ["exps", "uncollected", tradeId],
     enabled: !!tradeId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("exp_overview").select("*").eq("trade_id", tradeId).is("collection_status", null).order("created_at");
-      if (error) throw error;
-      return data as Exp[];
+      return selectAll<Exp>(() => supabase.from("exp_overview").select("*").eq("trade_id", tradeId).is("collection_status", null).order("created_at").order("id"));
     },
   });
 

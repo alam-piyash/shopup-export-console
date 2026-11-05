@@ -5,6 +5,7 @@ import { useDecide, useIncentives, useIsAdmin } from "@/lib/api";
 import { money, moneyShort, downloadCsv, fmtDate } from "@/lib/format";
 import type { Incentive } from "@/lib/types";
 import { ApproveReject, Button, Chip, Empty, Input, Kpi, KpiGrid, LoadingRows, Money, PageHeader, Panel, Row, Segments, cn } from "@/components/ui";
+import { ScProgress } from "@/components/scProgress";
 
 type Filter = "all" | "pending_approval" | "approved" | "rejected";
 
@@ -41,6 +42,7 @@ export default function Incentives() {
           </>
         }
       />
+      <ScProgress mode="incentive" />
       <KpiGrid cols={3}>
         <Kpi label="Approved incentive" value={moneyShort(sumBy("approved"))} sub={`${count("approved")} claims`} />
         <Kpi label="Pending incentive" value={moneyShort(sumBy("pending_approval"))} sub={`${count("pending_approval")} waiting for an admin`} />

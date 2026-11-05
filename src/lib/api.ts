@@ -75,14 +75,22 @@ export function useTrades() {
   });
 }
 
+/** Reads every row past the API's 1000-row page size. `make` builds the query for one page. */
+export async function selectAll<T>(make: () => { range: (from: number, to: number) => PromiseLike<{ data: unknown; error: unknown }> }, page = 1000): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; ; from += page) {
+    const { data, error } = await make().range(from, from + page - 1);
+    if (error) throw error;
+    const rows = (data ?? []) as T[];
+    out.push(...rows);
+    if (rows.length < page) return out;
+  }
+}
+
 export function useAllExps() {
   return useQuery({
     queryKey: ["exps", "all"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("exp_overview").select("*").order("created_at", { ascending: false });
-      if (error) throw error;
-      return data as Exp[];
-    },
+    queryFn: () => selectAll<Exp>(() => supabase.from("exp_overview").select("*").order("created_at", { ascending: false }).order("id")),
   });
 }
 
@@ -90,13 +98,12 @@ export function useTrade(id: string) {
   return useQuery({
     queryKey: ["trade", id],
     queryFn: async () => {
-      const [t, e] = await Promise.all([
+      const [t, exps] = await Promise.all([
         supabase.from("trade_overview").select("*").eq("id", id).single(),
-        supabase.from("exp_overview").select("*").eq("trade_id", id).order("created_at"),
+        selectAll<Exp>(() => supabase.from("exp_overview").select("*").eq("trade_id", id).order("created_at").order("id")),
       ]);
       if (t.error) throw t.error;
-      if (e.error) throw e.error;
-      return { trade: t.data as Trade, exps: e.data as Exp[] };
+      return { trade: t.data as Trade, exps };
     },
   });
 }
