@@ -3,13 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { FileUp, Loader2, Plus, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { rpc, useRefresh, useTrades } from "@/lib/api";
-import { bdt, errMsg, usdOpt } from "@/lib/format";
+import { money, errMsg } from "@/lib/format";
 import type { UploadedFile } from "@/lib/types";
 import { FREIGHT_LABEL, nextScNo, useBuyers, useCompanyProfiles, useProducts, type Buyer, type CompanyProfile, type Notify } from "@/lib/masters";
 import { scDataFrom, saveGeneratedVersion } from "@/lib/contractDocs";
 import { Button, Chip, Field, Grid, Input, PageHeader, Row, Section, Select, Switch, Textarea } from "@/components/ui";
 import { FileField } from "@/components/files";
-import { ItemsEditor, emptyItem, itemsTotal, withBdtRates, type ItemLine } from "@/components/items";
+import { ItemsEditor, emptyItem, itemsTotal, withRates, type ItemLine } from "@/components/items";
 
 type F = { key: string; label: string; type?: "text" | "date" | "number" | "textarea" | "select" | "email"; options?: string[]; required?: boolean; placeholder?: string; hint?: string };
 
@@ -178,10 +178,9 @@ export default function TradeNew() {
     }
   }
 
-  const xr = Number(v.exchange_rate || 0);
-  const goods = withBdtRates(items, xr);
+  const goods = withRates(items);
   const freight = Number(freightUsd || 0);
-  const freightLine: ItemLine | null = freight > 0 ? { ...emptyItem(), description: FREIGHT_LABEL, incoterm: "", quantity_kg: "1", rate_usd_per_kg: String(freight), rate_per_kg: xr > 0 ? String(r2(freight * xr)) : "" } : null;
+  const freightLine: ItemLine | null = freight > 0 ? { ...emptyItem(), description: FREIGHT_LABEL, incoterm: "", quantity_kg: "1", rate_usd_per_kg: String(freight), rate_per_kg: String(freight) } : null;
   const allLines = freightLine ? [...goods, freightLine] : goods;
   const total = itemsTotal(allLines);
   const goodsUsd = r2(items.reduce((s, i) => s + Number(i.quantity_kg || 0) * Number(i.rate_usd_per_kg || 0), 0));
@@ -189,7 +188,6 @@ export default function TradeNew() {
   const profile = profiles?.find((p) => p.id === profileId);
 
   const missing = REQUIRED.filter((f) => !v[f.key]?.trim()).map((f) => f.label.toLowerCase());
-  if (!(xr > 0)) missing.push("exchange rate");
   if (!items.length || !items.every((i) => i.description.trim() && Number(i.quantity_kg) > 0 && Number(i.rate_usd_per_kg) > 0)) missing.push("complete item lines");
   const valid = missing.length === 0 && total > 0;
   const buyerIsNew = !buyerId && !!v.importer_name?.trim() && !buyers.some((b) => b.name.toLowerCase() === v.importer_name.trim().toLowerCase());
@@ -215,7 +213,6 @@ export default function TradeNew() {
         ...rest,
         shipment_timeline: rest.shipment_timeline || (v.shipment_deadline ? v.shipment_deadline.split("-").reverse().join("/") : ""),
         contract_amount_usd: totalUsd || null,
-        exchange_rate: String(xr),
         notify_parties: notifyClean,
         company_profile_id: profileId || null,
         buyer_id: bId,
@@ -283,16 +280,13 @@ export default function TradeNew() {
             {fields(BUYER)}
             {buyerIsNew && <Switch checked={saveBuyer} onChange={setSaveBuyer} label="Save this buyer to Masters" />}
           </Section>
-          <Section step={4} title="Items" hint="Enter USD rates. BDT is calculated with the exchange rate.">
+          <Section step={4} title="Items" hint="All rates and amounts are in USD.">
             <Grid>
-              <Field label="Exchange rate (BDT per USD)" required>
-                <Input type="number" inputMode="decimal" step="any" value={v.exchange_rate ?? ""} onChange={(e) => set("exchange_rate")(e.target.value)} placeholder="122" />
-              </Field>
               <Field label="Freight (USD)" hint="Printed as Freight Cost (Subject to Change)">
                 <Input type="number" inputMode="decimal" step="any" value={freightUsd} onChange={(e) => setFreightUsd(e.target.value)} placeholder="0" />
               </Field>
             </Grid>
-            <ItemsEditor items={items} onChange={setItems} xr={xr} products={products} />
+            <ItemsEditor items={items} onChange={setItems} products={products} />
           </Section>
           <Section step={5} title="Exporter and signatory" hint="From the company profile. Edit if needed.">{fields(EXPORTER)}</Section>
           <Section step={6} title="Notify parties" hint="Add as many as the contract lists.">
@@ -317,12 +311,11 @@ export default function TradeNew() {
             <Row label="Buyer" value={v.importer_name || <span className="text-mut">Not set</span>} />
             <Row label="Destination" value={v.country_of_destination || v.importer_country || <span className="text-mut">Not set</span>} />
             <Row label="Items" value={<span className="num">{items.filter((i) => i.description.trim()).length}</span>} />
-            {freight > 0 && <Row label="Freight" value={<span className="num">{usdOpt(freight)}</span>} />}
+            {freight > 0 && <Row label="Freight" value={<span className="num">{money(freight)}</span>} />}
             <Row label="Signed copy" value={file ? <Chip label="Attached" tone="ok" /> : <Chip label="Later" tone="gray" />} />
             <div className="my-3 border-t border-line" />
             <div className="lbl">Total CFR amount</div>
-            <div className="num mt-1 text-[1.75rem] font-semibold leading-tight">{totalUsd ? usdOpt(totalUsd) : "$0"}</div>
-            <div className="num text-mut">{bdt(total)}{xr > 0 ? ` at ৳${xr}` : ""}</div>
+            <div className="num mt-1 text-[1.75rem] font-semibold leading-tight">{money(totalUsd)}</div>
             {missing.length > 0 && <p className="mt-3 text-[0.7812rem] text-mut">Still needed: {missing.join(", ")}.</p>}
           </div>
           <Button className="h-11 w-full" disabled={!valid || !!busy} loading={!!busy} onClick={submit}>

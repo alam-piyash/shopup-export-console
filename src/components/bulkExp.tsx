@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { Download, FileSpreadsheet, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { rpc, useAllExps, useRefresh, useTrades } from "@/lib/api";
-import { bdt, downloadCsv, errMsg } from "@/lib/format";
+import { money, downloadCsv, errMsg } from "@/lib/format";
 import { Button, Chip, Modal } from "./ui";
 
 const HEADERS = ["SC number", "Shipment ID", "EXP number", "AWB number", "Flight number", "Shipment date", "Amount BDT", "Amount USD", "Advance"] as const;
@@ -77,7 +77,7 @@ export function BulkExpDialog({ open, onOpenChange }: { open: boolean; onOpenCha
       if (expNo) seenExp.add(expNo);
       if (t && amount > 0) {
         const after = (used.get(t.id) ?? Number(t.exp_issued ?? 0)) + amount;
-        if (after > Number(t.contract_amount) + 0.0001) errors.push(`Over contract by ${bdt(after - Number(t.contract_amount))}`);
+        if (after > Number(t.contract_amount) + 0.0001) errors.push(`Over contract by ${money(after - Number(t.contract_amount))}`);
         used.set(t.id, after);
       }
       return { ...r, n: i + 2, tradeId: t?.id, tradeCode: t?.code, amount, amountUsd: usdV || null, advance, date: date === "invalid" ? "" : date, errors };
@@ -188,7 +188,7 @@ export function BulkExpDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                     <td className="code-id">{r["Shipment ID"] || (r.advance ? <span className="text-mut">Advance</span> : "")}</td>
                     <td className="code-id">{r["EXP number"]}</td>
                     <td className="code-id">{r.date}</td>
-                    <td className="num">{r.amount ? bdt(r.amount) : ""}</td>
+                    <td className="num">{r.amount ? money(r.amount) : ""}</td>
                     <td className="max-w-[16rem]">
                       {r.result === "ok" ? <Chip label="Created" tone="ok" /> : r.result ? <span className="text-[0.75rem] text-bad">{r.result}</span> : r.errors.length ? <span className="text-[0.75rem] text-bad">{r.errors.join(". ")}</span> : <Chip label="Ready" tone="info" dot={false} />}
                     </td>

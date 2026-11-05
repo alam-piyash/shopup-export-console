@@ -8,7 +8,6 @@ type TradeLike = Partial<Trade> & Pick<Trade, "exporter" | "importer_name" | "sa
 
 /** Builds the PDF data from a trade (or the form values) and its item lines. */
 export function scDataFrom(t: TradeLike, items: ItemLike[], amendments: Pick<Amendment, "amendment_no" | "amendment_date" | "status">[] = [], deadline?: string | null): ScData {
-  const xr = Number(t.exchange_rate || 0);
   return {
     exporter: t.exporter,
     exporter_address: t.exporter_address,
@@ -47,7 +46,7 @@ export function scDataFrom(t: TradeLike, items: ItemLike[], amendments: Pick<Ame
       hs_code: i.hs_code,
       incoterm: i.incoterm,
       quantity_kg: i.quantity_kg,
-      rate_usd_per_kg: i.rate_usd_per_kg && Number(i.rate_usd_per_kg) > 0 ? i.rate_usd_per_kg : xr > 0 ? Math.round((Number(i.rate_per_kg || 0) / xr) * 100) / 100 : null,
+      rate_usd_per_kg: i.rate_usd_per_kg && Number(i.rate_usd_per_kg) > 0 ? i.rate_usd_per_kg : i.rate_per_kg ?? null,
     })),
   };
 }

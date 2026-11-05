@@ -4,7 +4,7 @@ import { Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { rpc, useMe, useProfiles, useRefresh } from "@/lib/api";
-import { bdt, errMsg, fmtDate, rateHint, usdOpt } from "@/lib/format";
+import { money, errMsg, fmtDate } from "@/lib/format";
 import type { Exp, ExpAmountChange, UploadedFile } from "@/lib/types";
 import { ApproveReject, Button, Chip, Field, Grid, Input, Modal, Panel, Textarea, cn } from "./ui";
 import { FileActions, FileField } from "./files";
@@ -26,18 +26,17 @@ export function useExpAmountChanges(expId: string) {
 export function ChangeAmountDialog({ exp, limitLeft, onClose }: { exp: Exp; limitLeft: number; onClose: () => void }) {
   const refresh = useRefresh();
   const [amount, setAmount] = useState("");
-  const [amountUsd, setAmountUsd] = useState("");
   const [reason, setReason] = useState("");
   const [file, setFile] = useState<UploadedFile | null>(null);
   const [busy, setBusy] = useState(false);
   const n = Number(amount || 0);
   const delta = n - Number(exp.amount);
   const over = n > 0 && delta > limitLeft + 0.0001;
-  const valid = n > 0 && (n !== Number(exp.amount) || (amountUsd !== "" && Number(amountUsd) !== Number(exp.amount_usd ?? NaN))) && reason.trim() && file && !over;
+  const valid = n > 0 && n !== Number(exp.amount) && reason.trim() && file && !over;
   async function submit() {
     setBusy(true);
     try {
-      await rpc("request_exp_amount_change", { p_exp: exp.id, p_amount: n, p_amount_usd: amountUsd ? Number(amountUsd) : null, p_reason: reason, p_file: file });
+      await rpc("request_exp_amount_change", { p_exp: exp.id, p_amount: n, p_amount_usd: null, p_reason: reason, p_file: file });
       toast.success("Amount change sent for approval");
       refresh();
       onClose();
@@ -65,33 +64,28 @@ export function ChangeAmountDialog({ exp, limitLeft, onClose }: { exp: Exp; limi
         <div className="grid grid-cols-2 gap-3 rounded-xl border border-line bg-bg p-3.5 text-[0.8125rem]">
           <div>
             <div className="lbl">Issued on EXP</div>
-            <div className="num mt-0.5 font-medium">{bdt(exp.issued_amount ?? exp.amount)}</div>
-            {usdOpt(exp.issued_amount_usd) && <div className="num text-mut">{usdOpt(exp.issued_amount_usd)}</div>}
+            <div className="num mt-0.5 font-medium">{money(exp.issued_amount ?? exp.amount)}</div>
           </div>
           <div>
             <div className="lbl">Current amount</div>
-            <div className="num mt-0.5 font-medium">{bdt(exp.amount)}</div>
-            {usdOpt(exp.amount_usd) && <div className="num text-mut">{usdOpt(exp.amount_usd)}</div>}
+            <div className="num mt-0.5 font-medium">{money(exp.amount)}</div>
           </div>
         </div>
         <Grid>
           <Field
-            label="New amount (BDT)"
+            label="New amount (USD)"
             required
             error={over}
             hint={
               n > 0 ? (
                 <>
-                  Change <span className={cn("num", delta > 0 ? "text-ok" : delta < 0 ? "text-bad" : "")}>{delta > 0 ? "+" : ""}{bdt(delta)}</span>
-                  {over ? " · above the contract limit, amend the contract first" : ` · room left ${bdt(limitLeft)}`}
+                  Change <span className={cn("num", delta > 0 ? "text-ok" : delta < 0 ? "text-bad" : "")}>{delta > 0 ? "+" : ""}{money(delta)}</span>
+                  {over ? " · above the contract limit, amend the contract first" : ` · room left ${money(limitLeft)}`}
                 </>
-              ) : `Room left on the contract (with tolerance) ${bdt(limitLeft)}`
+              ) : `Room left on the contract (with tolerance) ${money(limitLeft)}`
             }
           >
             <Input type="number" inputMode="decimal" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" autoFocus />
-          </Field>
-          <Field label="New amount (USD, optional)" hint={rateHint(amount, amountUsd)}>
-            <Input type="number" inputMode="decimal" step="0.01" value={amountUsd} onChange={(e) => setAmountUsd(e.target.value)} placeholder="0" />
           </Field>
         </Grid>
         <Field label="Reason" required>
@@ -117,7 +111,7 @@ export function AmountChangesPanel({ exp }: { exp: Exp }) {
   const backingDocs = data.flatMap((c) =>
     entityDocModels(backing.data, { entityId: c.id, folder: "exps/amount-changes", refresh }).map((d) => ({
       ...d,
-      name: `Backing document · ${bdt(c.old_amount)} to ${bdt(c.new_amount)}`,
+      name: `Backing document · ${money(c.old_amount)} to ${money(c.new_amount)}`,
       tag: c.status === "pending_approval" ? "Awaiting approval" : c.status === "approved" ? "Approved" : c.status === "rejected" ? "Rejected" : "Withdrawn",
     })),
   );
@@ -154,10 +148,9 @@ export function AmountChangesPanel({ exp }: { exp: Exp }) {
               return (
                 <tr key={c.id}>
                   <td className="whitespace-nowrap text-mut">{fmtDate(c.created_at)} · {c.is_demo ? "Demo" : profiles[c.requested_by ?? ""] ?? ""}</td>
-                  <td className="num text-mut">{bdt(c.old_amount)}</td>
+                  <td className="num text-mut">{money(c.old_amount)}</td>
                   <td className="num">
-                    {bdt(c.new_amount)} <span className={cn("ml-1 text-[0.75rem]", d > 0 ? "text-ok" : "text-bad")}>{d > 0 ? "+" : ""}{bdt(d)}</span>
-                    {usdOpt(c.new_amount_usd) && <div className="text-[0.7188rem] text-mut">{usdOpt(c.new_amount_usd)}</div>}
+                    {money(c.new_amount)} <span className={cn("ml-1 text-[0.75rem]", d > 0 ? "text-ok" : "text-bad")}>{d > 0 ? "+" : ""}{money(d)}</span>
                   </td>
                   <td className="max-w-[16rem] truncate" title={c.reason}>{c.reason}{c.rejection_reason && <div className="text-[0.75rem] text-bad">Rejected: {c.rejection_reason}</div>}</td>
                   <td><FileActions path={c.file_path} name={c.file_name} /></td>

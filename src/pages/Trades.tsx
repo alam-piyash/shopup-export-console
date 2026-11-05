@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeftRight, Download, Plus, Search } from "lucide-react";
 import { useIsAdmin, useTradeActions, useTrades } from "@/lib/api";
-import { bdt, bdtShort, downloadCsv, fmtDate, pct } from "@/lib/format";
+import { money, moneyShort, downloadCsv, fmtDate, pct } from "@/lib/format";
 import type { Trade } from "@/lib/types";
 import { ApproveReject, Button, Chip, Empty, Input, Kpi, KpiGrid, LoadingRows, Money, PageHeader, Panel, Segments, cn } from "@/components/ui";
 
@@ -59,8 +59,8 @@ export default function Trades() {
       `trades-${new Date().toISOString().slice(0, 10)}.csv`,
       shown.map((t) => ({
         Code: t.code, "SC number": t.sales_contract_no, "Contract date": t.contract_date, Buyer: t.importer_name, Country: t.importer_country,
-        Products: t.products, "Contract BDT": t.contract_amount, "Contract USD": t.contract_amount_usd ?? "", "EXP issued BDT": t.exp_issued,
-        "Collected BDT": t.collected, EXPs: t.exp_count, Status: t.status, Expiry: t.expiry_date ?? "",
+        Products: t.products, "Contract USD": t.contract_amount, "EXP issued USD": t.exp_issued,
+        "Collected USD": t.collected, EXPs: t.exp_count, Status: t.status, Expiry: t.expiry_date ?? "",
       })),
     );
 
@@ -77,9 +77,9 @@ export default function Trades() {
         }
       />
       <KpiGrid>
-        <Kpi label="Contract value" value={bdtShort(kpi.contract)} usdValue={kpi.contractUsd} sub={`${live.length} trades`} />
-        <Kpi label="EXP issued" value={bdtShort(kpi.exp)} usdValue={kpi.expUsd} sub={kpi.contract ? `${pct(kpi.exp, kpi.contract)}% of contract value` : "No contracts yet"} />
-        <Kpi label="Collected" value={bdtShort(kpi.collected)} usdValue={kpi.collectedUsd} sub={kpi.exp ? `${pct(kpi.collected, kpi.exp)}% of EXP issued` : "Nothing collected yet"} />
+        <Kpi label="Contract value" value={moneyShort(kpi.contract)} usdValue={kpi.contractUsd} sub={`${live.length} trades`} />
+        <Kpi label="EXP issued" value={moneyShort(kpi.exp)} usdValue={kpi.expUsd} sub={kpi.contract ? `${pct(kpi.exp, kpi.contract)}% of contract value` : "No contracts yet"} />
+        <Kpi label="Collected" value={moneyShort(kpi.collected)} usdValue={kpi.collectedUsd} sub={kpi.exp ? `${pct(kpi.collected, kpi.exp)}% of EXP issued` : "Nothing collected yet"} />
         <Kpi label="Awaiting approval" value={kpi.awaiting} sub="Trades and amendments" />
       </KpiGrid>
 
@@ -127,11 +127,11 @@ export default function Trades() {
                       <td className="code-id">{t.sales_contract_no}</td>
                       <td className="max-w-[13rem] truncate">{t.importer_name}{t.is_demo && <span className="ml-1.5 text-mut">(demo)</span>}</td>
                       <td className="num">{fmtDate(t.contract_date)}</td>
-                      <td className="num">{bdt(t.contract_amount)}</td>
-                      <td className="num">{bdt(t.exp_issued)}</td>
+                      <td className="num">{money(t.contract_amount)}</td>
+                      <td className="num">{money(t.exp_issued)}</td>
                       <td className="num">{pct(t.exp_issued, t.contract_amount)}%</td>
-                      <td className="num">{bdt(t.collected)}</td>
-                      <td className="num">{bdt(Number(t.contract_amount) - Number(t.exp_issued))}</td>
+                      <td className="num">{money(t.collected)}</td>
+                      <td className="num">{money(Number(t.contract_amount) - Number(t.exp_issued))}</td>
                       <td><Chip status={t.status} /></td>
                       <td><div className="flex justify-end"><TradeApprovals t={t} /></div></td>
                     </tr>
@@ -152,16 +152,16 @@ export default function Trades() {
                   </div>
                   <div className="text-[0.75rem] text-mut"><span className="num">{pct(t.exp_issued, t.contract_amount)}%</span> of contract issued as EXP</div>
                   <div className="grid grid-cols-3 gap-2 text-[0.8125rem]">
-                    <div><div className="lbl">Contract</div><span className="num">{bdtShort(t.contract_amount)}</span></div>
-                    <div><div className="lbl">EXP</div><span className="num">{bdtShort(t.exp_issued)}</span></div>
-                    <div><div className="lbl">Collected</div><span className="num">{bdtShort(t.collected)}</span></div>
+                    <div><div className="lbl">Contract</div><span className="num">{moneyShort(t.contract_amount)}</span></div>
+                    <div><div className="lbl">EXP</div><span className="num">{moneyShort(t.exp_issued)}</span></div>
+                    <div><div className="lbl">Collected</div><span className="num">{moneyShort(t.collected)}</span></div>
                   </div>
                   <div className="empty:hidden"><TradeApprovals t={t} /></div>
                 </div>
               ))}
             </div>
             <div className="border-t border-line px-4 py-2.5 text-[0.75rem] text-mut">
-              Showing {shown.length} of {rows.length} · total contract {bdt(shown.reduce((s, t) => s + Number(t.contract_amount), 0))}
+              Showing {shown.length} of {rows.length} · total contract {money(shown.reduce((s, t) => s + Number(t.contract_amount), 0))}
             </div>
           </>
         )}

@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeftRight, CheckCircle2, Coins, Ship, Wallet } from "lucide-react";
 import { EXP_DOCS, actionLabel, actionTone, useActivity, useAllExps, useCollections, useDecide, useIncentives, useMe, useProfiles, useTradeActions, useTrades } from "@/lib/api";
 import { followupState } from "@/components/contractPanel";
-import { bdt, bdtShort, daysUntil, fmtDate, pct, timeAgo } from "@/lib/format";
+import { money, moneyShort, daysUntil, fmtDate, pct, timeAgo } from "@/lib/format";
 import { ApproveReject, Chip, Empty, Kpi, KpiGrid, Panel, Skeleton, cn } from "@/components/ui";
 
 export default function Dashboard() {
@@ -73,10 +73,10 @@ export default function Dashboard() {
         <KpiGrid>{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[7.5rem]" />)}</KpiGrid>
       ) : (
         <KpiGrid>
-          <Kpi label="Contract value" value={bdtShort(s.contract)} icon={<ArrowLeftRight />} sub={`${s.live.length} trades · ${bdt(s.contract)}`} />
-          <Kpi label="EXP issued" value={bdtShort(s.issued)} icon={<Ship />} sub={`${pct(s.issued, s.contract)}% of contract value`} />
-          <Kpi label="Collected" value={bdtShort(s.collected)} icon={<Wallet />} sub={`${pct(s.collected, s.issued)}% of EXP issued`} />
-          <Kpi label="Incentive approved" value={bdtShort(s.incApproved)} icon={<Coins />} sub={s.incPending ? `${bdtShort(s.incPending)} pending` : "Nothing pending"} />
+          <Kpi label="Contract value" value={moneyShort(s.contract)} icon={<ArrowLeftRight />} sub={`${s.live.length} trades · ${money(s.contract)}`} />
+          <Kpi label="EXP issued" value={moneyShort(s.issued)} icon={<Ship />} sub={`${pct(s.issued, s.contract)}% of contract value`} />
+          <Kpi label="Collected" value={moneyShort(s.collected)} icon={<Wallet />} sub={`${pct(s.collected, s.issued)}% of EXP issued`} />
+          <Kpi label="Incentive approved" value={moneyShort(s.incApproved)} icon={<Coins />} sub={s.incPending ? `${moneyShort(s.incPending)} pending` : "Nothing pending"} />
         </KpiGrid>
       )}
 
@@ -206,7 +206,7 @@ export default function Dashboard() {
 }
 
 function Line({ label, v }: { label: string; v: number }) {
-  return <div className="flex justify-between gap-3 py-1"><span className="text-fg/85">{label}</span><span className="num">{bdt(v)}</span></div>;
+  return <div className="flex justify-between gap-3 py-1"><span className="text-fg/85">{label}</span><span className="num">{money(v)}</span></div>;
 }
 
 function Attn({ label, n, to }: { label: string; n: number; to: string }) {
@@ -241,9 +241,9 @@ function BuyerTable({ live }: { live: LiveTrade[] }) {
             <tr key={name}>
               <td className="max-w-[14rem] truncate">{name}</td>
               <td className="r num">{r.n}</td>
-              <td className="r num">{bdt(r.c)}</td>
-              <td className="r num">{bdt(r.i)}</td>
-              <td className="r num">{bdt(r.col)}</td>
+              <td className="r num">{money(r.c)}</td>
+              <td className="r num">{money(r.i)}</td>
+              <td className="r num">{money(r.col)}</td>
               <td className="r num">{pct(r.col, r.i)}%</td>
             </tr>
           ))}
@@ -296,13 +296,13 @@ function TrendCard({ trades, exps, cols, totals }: { trades: Dated[]; exps: Date
         {tabs.map((t) => (
           <button key={t.k} type="button" onClick={() => setTab(t.k)} className={cn("border-t border-line px-4 py-3 text-left transition sm:border-l sm:border-t-0", tab === t.k ? "bg-raised" : "hover:bg-raised/50")}>
             <div className="text-[0.8125rem] text-fg/80">{t.label}</div>
-            <div className="num mt-0.5 text-[1.25rem] font-semibold tracking-tight">{bdtShort(t.v)}</div>
+            <div className="num mt-0.5 text-[1.25rem] font-semibold tracking-tight">{moneyShort(t.v)}</div>
           </button>
         ))}
       </div>
       <div className="grid grid-cols-[3.5rem_minmax(0,1fr)] gap-2 px-4 pb-3 pt-5">
         <div className="num flex h-[12.5rem] flex-col justify-between text-right text-[0.6875rem] text-mut">
-          <span>{bdtShort(max)}</span><span>{bdtShort(max * 0.66)}</span><span>{bdtShort(max * 0.33)}</span><span>৳0</span>
+          <span>{moneyShort(max)}</span><span>{moneyShort(max * 0.66)}</span><span>{moneyShort(max * 0.33)}</span><span>$0</span>
         </div>
         <div className="min-w-0">
           <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="block h-[12.5rem] w-full" role="img" aria-label={`${tabs.find((t) => t.k === tab)?.label} by month`}>
@@ -329,7 +329,7 @@ function QueueRow({ kind, code, title, amount, to, who, when, actions }: { kind:
         </div>
         <div className="mt-1 text-[0.75rem] text-mut">{who ? `${who} · ` : ""}{fmtDate(when)}</div>
       </Link>
-      <span className="num text-[0.875rem] font-semibold sm:w-32 sm:text-right">{bdt(amount)}</span>
+      <span className="num text-[0.875rem] font-semibold sm:w-32 sm:text-right">{money(amount)}</span>
       <div className="shrink-0">{actions}</div>
     </li>
   );

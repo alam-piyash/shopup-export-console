@@ -3,7 +3,7 @@ import * as D from "@radix-ui/react-dialog";
 import { Loader2, X } from "lucide-react";
 import { clsx } from "clsx";
 import { toast } from "sonner";
-import { bdt, errMsg, usdOpt } from "@/lib/format";
+import { money, errMsg } from "@/lib/format";
 
 export const cn = clsx;
 
@@ -105,18 +105,19 @@ export function Chip({ status, label, tone, dot = true, className }: { status?: 
   );
 }
 
-export function Money({ bdt: b, usd: u, className, align }: { bdt: number | string | null | undefined; usd?: number | string | null; className?: string; align?: "end" }) {
-  const line = usdOpt(u);
+export function Money({ money: b, usd: u, className, align }: { money: number | string | null | undefined; usd?: number | string | null; className?: string; align?: "end" }) {
+  void u;
+  const line = null as string | null;
   return (
     <span className={cn("inline-flex flex-col", align === "end" && "items-end", className)}>
-      <span className="num">{bdt(b)}</span>
+      <span className="num">{money(b)}</span>
       {line && <span className="num text-[0.7188rem] font-normal text-mut">{line}</span>}
     </span>
   );
 }
 
 export function Kpi({ label, value, sub, usdValue, icon, tone }: { label: string; value: ReactNode; sub?: ReactNode; usdValue?: number | string | null; icon?: ReactNode; tone?: Tone }) {
-  const line = usdOpt(usdValue);
+  const line = usdValue !== null && usdValue !== undefined && usdValue !== "" ? money(usdValue) : null;
   return (
     <div className="card relative flex min-w-0 flex-col gap-2.5 overflow-hidden px-5 py-4">
       <div className="flex items-center justify-between gap-2">

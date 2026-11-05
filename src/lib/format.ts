@@ -8,17 +8,19 @@ export function groupBD(v: number) {
 }
 type N = number | string | null | undefined;
 
-export function bdt(n: N) {
+const moneyFmt = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+/** All amounts are USD: $12,345.67 */
+export function money(n: N) {
   const v = Number(n ?? 0);
-  return (v < 0 ? "-৳" : "৳") + groupBD(Math.abs(v));
+  return (v < 0 ? "-$" : "$") + moneyFmt.format(Math.abs(v));
 }
-/** Compact BDT for KPIs: ৳1.22 Cr, ৳30.5 L */
-export function bdtShort(n: N) {
+/** Compact USD for KPIs: $1.25M, $42.8K */
+export function moneyShort(n: N) {
   const v = Math.abs(Number(n ?? 0));
-  const s = Number(n ?? 0) < 0 ? "-৳" : "৳";
-  if (v >= 1e7) return s + (v / 1e7).toFixed(v >= 1e9 ? 0 : 2).replace(/\.?0+$/, "") + " Cr";
-  if (v >= 1e5) return s + (v / 1e5).toFixed(2).replace(/\.?0+$/, "") + " L";
-  return s + groupBD(v);
+  const s = Number(n ?? 0) < 0 ? "-$" : "$";
+  if (v >= 1e6) return s + (v / 1e6).toFixed(2).replace(/\.?0+$/, "") + "M";
+  if (v >= 1e4) return s + (v / 1e3).toFixed(1).replace(/\.?0+$/, "") + "K";
+  return s + moneyFmt.format(v);
 }
 const usdFmt = new Intl.NumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 export function usd(n: N) {

@@ -5,11 +5,11 @@ import { Lock, Send } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { rpc, useRefresh, useTrade } from "@/lib/api";
-import { bdt, cents, errMsg } from "@/lib/format";
+import { money, cents, errMsg } from "@/lib/format";
 import type { UploadedFile } from "@/lib/types";
 import { Button, Chip, Empty, Field, Grid, Input, LoadingRows, PageHeader, Row, Section, Switch, Textarea, cn } from "@/components/ui";
 import { FileField } from "@/components/files";
-import { ItemsEditor, itemsTotal, itemsValid, type ItemLine } from "@/components/items";
+import { ItemsEditor, itemsTotal, itemsValid, withRates, type ItemLine } from "@/components/items";
 
 export default function TradeRevise() {
   const { tradeId = "" } = useParams();
@@ -54,7 +54,7 @@ export default function TradeRevise() {
             incoterm: i.incoterm ?? "",
             quantity_kg: String(i.quantity_kg),
             rate_per_kg: String(i.rate_per_kg),
-            rate_usd_per_kg: i.rate_usd_per_kg == null ? "" : String(i.rate_usd_per_kg),
+            rate_usd_per_kg: String(i.rate_per_kg),
           })),
     );
   }, [meta]);
@@ -79,7 +79,7 @@ export default function TradeRevise() {
       await rpc("request_amendment", {
         p_trade: tradeId,
         p_data: { amendment_no: Number(no), amendment_date: date, reason, new_amount: editItems ? null : target, new_expiry_date: newExpiry || null, new_shipment_timeline: newTimeline || null },
-        p_items: editItems ? items : null,
+        p_items: editItems ? withRates(items) : null,
         p_file: file,
         p_changes: changes,
       });
@@ -124,8 +124,8 @@ export default function TradeRevise() {
               <ItemsEditor items={items} onChange={setItems} />
             ) : (
               <Grid>
-                <Field label="Current amount"><Input className="num" value={bdt(t.contract_amount)} disabled /></Field>
-                <Field label="New contract amount (BDT)" required>
+                <Field label="Current amount"><Input className="num" value={money(t.contract_amount)} disabled /></Field>
+                <Field label="New contract amount (USD)" required>
                   <Input type="number" inputMode="decimal" step="0.01" value={newAmount} onChange={(e) => setNewAmount(e.target.value)} />
                 </Field>
               </Grid>
@@ -154,10 +154,10 @@ export default function TradeRevise() {
                           <Chip status={e.status} />
                           {changed && <Chip label="Changed" tone="info" dot={false} />}
                         </div>
-                        <div className="num text-[0.75rem] text-mut">Now {bdt(e.amount)}</div>
+                        <div className="num text-[0.75rem] text-mut">Now {money(e.amount)}</div>
                       </div>
                       {e.status === "closed" ? (
-                        <span className="num flex items-center gap-1 text-[0.8125rem] text-mut"><Lock className="size-3" /> {bdt(e.amount)}</span>
+                        <span className="num flex items-center gap-1 text-[0.8125rem] text-mut"><Lock className="size-3" /> {money(e.amount)}</span>
                       ) : (
                         <Input className="!w-40" type="number" inputMode="decimal" step="0.01" value={amounts[e.id] ?? String(e.amount)} onChange={(ev) => setAmounts((s) => ({ ...s, [e.id]: ev.target.value }))} />
                       )}
@@ -172,13 +172,13 @@ export default function TradeRevise() {
           <div className="card p-5">
             <div className="lbl mb-2">Summary of changes</div>
             <Row label="Amendment" value={`No ${no || "?"}`} />
-            <Row label="Current contract" value={<span className="num">{bdt(t.contract_amount)}</span>} />
-            <Row label="New contract" value={<span className="num">{bdt(target)}</span>} />
-            {target > 0 && delta !== 0 && <Row label="Change" value={<span className={cn("num", delta > 0 ? "text-ok" : "text-bad")}>{delta > 0 ? "+" : ""}{bdt(delta)}</span>} />}
-            <Row label="EXP total" value={<span className="num">{bdt(total)}</span>} />
+            <Row label="Current contract" value={<span className="num">{money(t.contract_amount)}</span>} />
+            <Row label="New contract" value={<span className="num">{money(target)}</span>} />
+            {target > 0 && delta !== 0 && <Row label="Change" value={<span className={cn("num", delta > 0 ? "text-ok" : "text-bad")}>{delta > 0 ? "+" : ""}{money(delta)}</span>} />}
+            <Row label="EXP total" value={<span className="num">{money(total)}</span>} />
             <div className="my-3 border-t border-line" />
             <div className="lbl">Headroom</div>
-            <div className={cn("num mt-1 text-[1.75rem] font-semibold", over ? "text-bad" : "text-ok")}>{bdt(target - total)}</div>
+            <div className={cn("num mt-1 text-[1.75rem] font-semibold", over ? "text-bad" : "text-ok")}>{money(target - total)}</div>
             {over && <p className="mt-2 text-[0.7812rem] text-bad">EXP total is above the new contract amount. Lower open EXPs or raise the amount.</p>}
           </div>
           <Button className="h-11 w-full" disabled={!valid} loading={busy} onClick={submit}>{!busy && <Send />} Submit for approval</Button>

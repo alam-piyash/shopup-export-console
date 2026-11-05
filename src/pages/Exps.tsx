@@ -4,7 +4,7 @@ import { Download, FileStack, FileUp, Plus, Search } from "lucide-react";
 import { AddExpDialog } from "@/components/expDialogs";
 import { BulkExpDialog } from "@/components/bulkExp";
 import { EXP_DOCS, useAllExps } from "@/lib/api";
-import { bdt, bdtShort, downloadCsv, fmtDate } from "@/lib/format";
+import { money, moneyShort, downloadCsv, fmtDate } from "@/lib/format";
 import { Button, Chip, Empty, Input, Kpi, KpiGrid, LoadingRows, Money, PageHeader, Panel, Segments } from "@/components/ui";
 
 type Filter = "all" | "open" | "closed" | "no_shipment" | "docs_pending" | "uncollected" | "amount_pending";
@@ -65,10 +65,10 @@ export default function Exps() {
       <AddExpDialog open={addOpen} onOpenChange={setAddOpen} />
       <BulkExpDialog open={bulkOpen} onOpenChange={setBulkOpen} />
       <KpiGrid>
-        <Kpi label="Total EXPs" value={rows.length} sub={bdtShort(total(rows))} />
-        <Kpi label="Open" value={count("open")} sub={bdtShort(total(rows.filter(match.open)))} />
+        <Kpi label="Total EXPs" value={rows.length} sub={moneyShort(total(rows))} />
+        <Kpi label="Open" value={count("open")} sub={moneyShort(total(rows.filter(match.open)))} />
         <Kpi label="Docs pending" value={count("docs_pending")} sub="Open EXPs with shipment" />
-        <Kpi label="Not collected" value={count("uncollected")} sub={bdtShort(total(rows.filter(match.uncollected)))} />
+        <Kpi label="Not collected" value={count("uncollected")} sub={moneyShort(total(rows.filter(match.uncollected)))} />
       </KpiGrid>
       <Panel
         title={
@@ -108,8 +108,8 @@ export default function Exps() {
                     <td className="max-w-[13rem] truncate">{e.importer_name}</td>
                     <td className="code-id">{e.shipment_id || <span className="text-warn">Not set</span>}</td>
                     <td className="num">{e.shipment_date ? fmtDate(e.shipment_date) : <span className="text-mut">Not set</span>}</td>
-                    <td className="num">{bdt(e.amount)}{e.pending_amount_change_id && <span className="ml-1.5 text-[0.7188rem] text-info">change pending</span>}</td>
-                    <td className="num text-mut">{e.issued_amount !== undefined && Number(e.issued_amount) !== Number(e.amount) ? bdt(e.issued_amount) : "Same"}</td>
+                    <td className="num">{money(e.amount)}{e.pending_amount_change_id && <span className="ml-1.5 text-[0.7188rem] text-info">change pending</span>}</td>
+                    <td className="num text-mut">{e.issued_amount !== undefined && Number(e.issued_amount) !== Number(e.amount) ? money(e.issued_amount) : "Same"}</td>
                     <td className="num">{e.docs_final} / {e.docs_total ?? EXP_DOCS.length} final</td>
                     <td>{e.collection_status ? <Chip label={e.collection_status === "approved" ? "Collected" : "Pending"} tone={e.collection_status === "approved" ? "ok" : "warn"} dot={false} /> : <span className="text-mut">Not collected</span>}</td>
                     <td><Chip status={e.status} /></td>
@@ -117,7 +117,7 @@ export default function Exps() {
                 ))}
               </tbody>
             </table>
-            <div className="border-t border-line px-4 py-2.5 text-[0.75rem] text-mut">Showing {shown.length} · total {bdt(total(shown))}</div>
+            <div className="border-t border-line px-4 py-2.5 text-[0.75rem] text-mut">Showing {shown.length} · total {money(total(shown))}</div>
           </div>
         )}
       </Panel>

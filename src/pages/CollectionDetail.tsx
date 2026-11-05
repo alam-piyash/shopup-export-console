@@ -1,6 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import { useCollections, useDecide, useIsAdmin, useProfiles } from "@/lib/api";
-import { bdt, bdtShort, fmtDate } from "@/lib/format";
+import { money, moneyShort, fmtDate } from "@/lib/format";
 import { ApproveReject, Chip, Empty, Kpi, KpiGrid, LoadingRows, Money, Panel, Row } from "@/components/ui";
 import { EntityDocPanel } from "@/components/entityDocs";
 
@@ -33,7 +33,7 @@ export default function CollectionDetail() {
       {pending && !isAdmin && <div className="banner chip-warn">Waiting for an admin to approve. The EXPs count as collected only after approval.</div>}
 
       <KpiGrid cols={3}>
-        <Kpi label="Amount received" value={bdtShort(c.amount)} usdValue={c.amount_usd} sub={<span className="num">{bdt(c.amount)}</span>} />
+        <Kpi label="Amount received" value={moneyShort(c.amount)} usdValue={c.amount_usd} sub={<span className="num">{money(c.amount)}</span>} />
         <Kpi label="EXPs covered" value={c.collection_exps.length} sub={c.collection_exps.map((x) => x.exps?.code).join(", ")} />
         <Kpi label="Submitted" value={fmtDate(c.created_at)} sub={c.is_demo ? "Demo" : profiles[c.created_by] ?? ""} />
       </KpiGrid>
@@ -42,7 +42,7 @@ export default function CollectionDetail() {
         <div className="flex flex-col gap-5">
           <Panel title="Details">
             <div className="px-4 py-2">
-              <Row label="Amount received" value={<Money bdt={c.amount} usd={c.amount_usd} align="end" />} />
+              <Row label="Amount received" value={<Money money={c.amount} usd={c.amount_usd} align="end" />} />
               <Row label="Bank reference" value={c.bank_reference || "None"} />
               <Row label="Trade" value={<Link to={`/trades/${c.trade_id}`} className="code-id hover:text-accent">{c.trades?.code}</Link>} />
               <Row label="Status" value={<Chip status={c.status} />} />
@@ -54,12 +54,12 @@ export default function CollectionDetail() {
               {c.collection_exps.map((x) => (
                 <li key={x.exps?.code} className="flex items-center justify-between gap-3 px-4 py-2.5">
                   <span className="code-id text-[0.8438rem]">{x.exps?.code}</span>
-                  <span className="num text-[0.8438rem]">{bdt(x.amount)}</span>
+                  <span className="num text-[0.8438rem]">{money(x.amount)}</span>
                 </li>
               ))}
               <li className="flex items-center justify-between gap-3 bg-bg px-4 py-2.5">
                 <span className="lbl">Total</span>
-                <span className="num font-semibold">{bdt(c.collection_exps.reduce((s, x) => s + Number(x.amount), 0))}</span>
+                <span className="num font-semibold">{money(c.collection_exps.reduce((s, x) => s + Number(x.amount), 0))}</span>
               </li>
             </ul>
           </Panel>

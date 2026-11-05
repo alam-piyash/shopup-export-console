@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Download, Plus, Search, Wallet } from "lucide-react";
 import { useCollections, useDecide, useIsAdmin } from "@/lib/api";
-import { bdt, bdtShort, downloadCsv, fmtDate } from "@/lib/format";
+import { money, moneyShort, downloadCsv, fmtDate } from "@/lib/format";
 import type { Collection } from "@/lib/types";
 import { ApproveReject, Button, Chip, Empty, Input, Kpi, KpiGrid, LoadingRows, Money, PageHeader, Panel, Row, Segments } from "@/components/ui";
 
@@ -41,16 +41,16 @@ export default function Collections() {
         actions={
           <>
             <Button variant="outline" disabled={!visible.length} onClick={() => downloadCsv(`collections-${new Date().toISOString().slice(0, 10)}.csv`, visible.map((r) => ({
-              Code: r.code, Trade: r.trades?.code, Buyer: r.trades?.importer_name, EXPs: r.collection_exps.map((c) => c.exps?.code).join(" "), "Amount BDT": r.amount,
-              "Amount USD": r.amount_usd ?? "", "Bank ref": r.bank_reference ?? "", Date: r.created_at.slice(0, 10), Status: r.status,
+              Code: r.code, Trade: r.trades?.code, Buyer: r.trades?.importer_name, EXPs: r.collection_exps.map((c) => c.exps?.code).join(" "), "Amount USD": r.amount,
+              "Bank ref": r.bank_reference ?? "", Date: r.created_at.slice(0, 10), Status: r.status,
             })))}><Download /> Export</Button>
             <Link to="/collections/new" className="btn btn-primary"><Plus /> New collection</Link>
           </>
         }
       />
       <KpiGrid cols={3}>
-        <Kpi label="Approved" value={bdtShort(sumBy("approved", "amount"))} usdValue={sumBy("approved", "amount_usd")} sub={`${count("approved")} collections`} />
-        <Kpi label="Pending" value={bdtShort(sumBy("pending_approval", "amount"))} usdValue={sumBy("pending_approval", "amount_usd")} sub={`${count("pending_approval")} waiting for an admin`} />
+        <Kpi label="Approved" value={moneyShort(sumBy("approved", "amount"))} usdValue={sumBy("approved", "amount_usd")} sub={`${count("approved")} collections`} />
+        <Kpi label="Pending" value={moneyShort(sumBy("pending_approval", "amount"))} usdValue={sumBy("pending_approval", "amount_usd")} sub={`${count("pending_approval")} waiting for an admin`} />
         <Kpi label="Rejected" value={count("rejected")} sub="Collections" />
       </KpiGrid>
       <Panel
@@ -83,7 +83,7 @@ export default function Collections() {
                       <td className="code-id">{r.trades?.code}</td>
                       <td className="max-w-[13rem] truncate">{r.trades?.importer_name}</td>
                       <td className="code-id">{r.collection_exps.length === 1 ? r.collection_exps[0].exps?.code : `${r.collection_exps[0]?.exps?.code ?? ""} +${r.collection_exps.length - 1}`}</td>
-                      <td className="num">{bdt(r.amount)}</td>
+                      <td className="num">{money(r.amount)}</td>
                       <td className="max-w-[10rem] truncate">{r.bank_reference || <span className="text-mut">None</span>}</td>
                       <td className="num">{fmtDate(r.created_at)}</td>
                       <td><Chip status={r.status} /></td>
@@ -99,7 +99,7 @@ export default function Collections() {
                   <div className="flex items-center justify-between"><span className="code-id font-semibold">{r.code}</span><Chip status={r.status} /></div>
                   <div className="text-[0.75rem] text-mut">{r.trades?.code} · {r.trades?.importer_name}</div>
                   <div className="code-id text-[0.75rem] text-mut">{r.collection_exps.map((c) => c.exps?.code).join(", ")}</div>
-                  <Money bdt={r.amount} usd={r.amount_usd} className="font-semibold" />
+                  <Money money={r.amount} usd={r.amount_usd} className="font-semibold" />
                   <div className="empty:hidden">{actions(r)}</div>
                 </div>
               ))}

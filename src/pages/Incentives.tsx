@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Coins, Download, Plus, Search } from "lucide-react";
 import { useDecide, useIncentives, useIsAdmin } from "@/lib/api";
-import { bdt, bdtShort, downloadCsv, fmtDate } from "@/lib/format";
+import { money, moneyShort, downloadCsv, fmtDate } from "@/lib/format";
 import type { Incentive } from "@/lib/types";
 import { ApproveReject, Button, Chip, Empty, Input, Kpi, KpiGrid, LoadingRows, Money, PageHeader, Panel, Row, Segments, cn } from "@/components/ui";
 
@@ -42,8 +42,8 @@ export default function Incentives() {
         }
       />
       <KpiGrid cols={3}>
-        <Kpi label="Approved incentive" value={bdtShort(sumBy("approved"))} sub={`${count("approved")} claims`} />
-        <Kpi label="Pending incentive" value={bdtShort(sumBy("pending_approval"))} sub={`${count("pending_approval")} waiting for an admin`} />
+        <Kpi label="Approved incentive" value={moneyShort(sumBy("approved"))} sub={`${count("approved")} claims`} />
+        <Kpi label="Pending incentive" value={moneyShort(sumBy("pending_approval"))} sub={`${count("pending_approval")} waiting for an admin`} />
         <Kpi label="Rejected" value={count("rejected")} sub="Claims" />
       </KpiGrid>
       <Panel
@@ -75,10 +75,10 @@ export default function Incentives() {
                       <td className="code-id font-medium">{r.code}</td>
                       <td className="num">{tradesOf(r)}</td>
                       <td className="num">{r.incentive_exps.length}</td>
-                      <td className="num">{bdt(r.exp_amount)}</td>
-                      <td className="num">{bdt(r.fob)}</td>
+                      <td className="num">{money(r.exp_amount)}</td>
+                      <td className="num">{money(r.fob)}</td>
                       <td className="num">{Number(r.incentive_pct)}%</td>
-                      <td className="num font-medium">{bdt(r.incentive_amount)}</td>
+                      <td className="num font-medium">{money(r.incentive_amount)}</td>
                       <td className="num">{fmtDate(r.created_at)}</td>
                       <td><Chip status={r.status} /></td>
                       <td><div className="flex justify-end gap-2">{actions(r)}</div></td>
@@ -91,8 +91,8 @@ export default function Incentives() {
               {visible.map((r) => (
                 <div key={r.id} className="flex cursor-pointer flex-col gap-2 rounded-xl border border-line bg-bg p-4" onClick={() => navigate(`/incentives/${r.id}`)}>
                   <div className="flex items-center justify-between"><span className="code-id font-semibold">{r.code}</span><Chip status={r.status} /></div>
-                  <div className="text-[0.75rem] text-mut">{tradesOf(r)} · FOB {bdt(r.fob)} at {Number(r.incentive_pct)}%</div>
-                  <div className="num font-semibold">{bdt(r.incentive_amount)}</div>
+                  <div className="text-[0.75rem] text-mut">{tradesOf(r)} · FOB {money(r.fob)} at {Number(r.incentive_pct)}%</div>
+                  <div className="num font-semibold">{money(r.incentive_amount)}</div>
                   <div className="empty:hidden">{actions(r)}</div>
                 </div>
               ))}

@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Lock, Pencil, Scale } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { rpc, useRefresh } from "@/lib/api";
-import { bdt, bdtShort, errMsg, fmtDate } from "@/lib/format";
+import { money, moneyShort, errMsg, fmtDate } from "@/lib/format";
 import type { Exp, ExpDoc, ExpDocVersion } from "@/lib/types";
 import { Button, Chip, Empty, Kpi, KpiGrid, LoadingRows, Progress, cn } from "@/components/ui";
 import { DocPanel, type DocModel } from "@/components/docs";
@@ -79,9 +79,9 @@ export default function ExpDetail() {
       <KpiGrid cols={4}>
         <Kpi
           label={exp.amount_changes ? "Amount (updated)" : "Amount"}
-          value={bdtShort(exp.amount)}
+          value={moneyShort(exp.amount)}
           usdValue={exp.amount_usd}
-          sub={exp.issued_amount !== undefined && Number(exp.issued_amount) !== Number(exp.amount) ? <>Issued on EXP <span className="num">{bdt(exp.issued_amount)}</span></> : "Same as issued on EXP"}
+          sub={exp.issued_amount !== undefined && Number(exp.issued_amount) !== Number(exp.amount) ? <>Issued on EXP <span className="num">{money(exp.issued_amount)}</span></> : "Same as issued on EXP"}
         />
         <Kpi label="Shipment" value={exp.shipment_id || "Not set"} sub={[exp.awb_no && `AWB ${exp.awb_no}`, exp.flight_no && `Flight ${exp.flight_no}`, exp.shipment_date && fmtDate(exp.shipment_date)].filter(Boolean).join(" · ") || undefined} />
         <Kpi label="Documents final" value={`${finals}/${total}`} sub={<Progress value={(finals / total) * 100} tone={finals === total ? "ok" : "accent"} />} />

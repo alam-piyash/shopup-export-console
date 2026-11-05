@@ -5,7 +5,7 @@ import { Send, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { COLLECTION_DOCS, rpc, useRefresh } from "@/lib/api";
-import { bdt, cents, errMsg, rateHint, usdOpt } from "@/lib/format";
+import { money, cents, errMsg } from "@/lib/format";
 import type { Exp, UploadedFile } from "@/lib/types";
 import { Button, Chip, Field, Grid, Input, PageHeader, Row, Section, Select, cn } from "@/components/ui";
 import { FileField } from "@/components/files";
@@ -15,7 +15,6 @@ export default function CollectionNew() {
   const refresh = useRefresh();
   const [tradeId, setTradeId] = useState("");
   const [amount, setAmount] = useState("");
-  const [amountUsd, setAmountUsd] = useState("");
   const [bankRef, setBankRef] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [docs, setDocs] = useState<Record<string, UploadedFile | null>>({});
@@ -73,7 +72,6 @@ export default function CollectionNew() {
         p_bank_ref: bankRef,
         p_exp_ids: selected,
         p_docs: COLLECTION_DOCS.map((d) => ({ doc_type: d, ...docs[d] })),
-        p_amount_usd: amountUsd ? Number(amountUsd) : null,
       });
       toast.success("Collection submitted for approval");
       refresh();
@@ -96,12 +94,9 @@ export default function CollectionNew() {
                 {trades?.map((t) => <option key={t.id} value={t.id}>{t.code} · {t.importer_name}</option>)}
               </Select>
             </Field>
-            <Grid cols={3}>
-              <Field label="Amount received (BDT)" required>
+            <Grid>
+              <Field label="Amount received (USD)" required>
                 <Input type="number" inputMode="decimal" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" />
-              </Field>
-              <Field label="Amount received (USD, optional)" hint={rateHint(amount, amountUsd)}>
-                <Input type="number" inputMode="decimal" step="0.01" value={amountUsd} onChange={(e) => setAmountUsd(e.target.value)} placeholder="0" />
               </Field>
               <Field label="Bank reference or notes">
                 <Input value={bankRef} onChange={(e) => setBankRef(e.target.value)} />
@@ -126,7 +121,7 @@ export default function CollectionNew() {
                         <div className="text-[0.75rem] text-mut">Shipment {e.shipment_id || "not set"}</div>
                       </div>
                       <Chip status={e.status} />
-                      <span className="num min-w-[7.5rem] text-right font-semibold">{bdt(e.amount)}</span>
+                      <span className="num min-w-[7.5rem] text-right font-semibold">{money(e.amount)}</span>
                     </label>
                   );
                 })}
@@ -142,13 +137,12 @@ export default function CollectionNew() {
         <aside className="flex flex-col gap-3 lg:sticky lg:top-20">
           <div className="card p-5">
             <div className="lbl mb-2">Match check</div>
-            <Row label="Amount received" value={<span className="num">{bdt(received)}</span>} />
-            {usdOpt(amountUsd) && <Row label="In USD" value={<span className="num">{usdOpt(amountUsd)}</span>} />}
-            <Row label={`Selected EXPs (${selected.length})`} value={<span className="num">{bdt(sum)}</span>} />
+            <Row label="Amount received" value={<span className="num">{money(received)}</span>} />
+            <Row label={`Selected EXPs (${selected.length})`} value={<span className="num">{money(sum)}</span>} />
             <Row label="Documents" value={<span className="num">{docsDone}/4</span>} />
             <div className="my-3 border-t border-line" />
             <div className="lbl">Difference</div>
-            <div className={cn("num mt-1 text-[1.75rem] font-semibold", matches ? "text-ok" : received ? "text-bad" : "text-mut")}>{bdt(diff)}</div>
+            <div className={cn("num mt-1 text-[1.75rem] font-semibold", matches ? "text-ok" : received ? "text-bad" : "text-mut")}>{money(diff)}</div>
             <div className="mt-2">{matches ? <Chip label="Totals match" tone="ok" /> : <Chip label="Totals must match exactly" tone="warn" />}</div>
           </div>
           <Button className="h-11 w-full" disabled={!valid} loading={busy} onClick={submit}>{!busy && <Send />} Submit for approval</Button>

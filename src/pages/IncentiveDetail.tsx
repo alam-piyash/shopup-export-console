@@ -1,6 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import { useDecide, useIncentives, useIsAdmin, useProfiles } from "@/lib/api";
-import { bdt, bdtShort, fmtDate } from "@/lib/format";
+import { money, moneyShort, fmtDate } from "@/lib/format";
 import { ApproveReject, Chip, Empty, Kpi, KpiGrid, LoadingRows, Money, Panel, Row } from "@/components/ui";
 import { EntityDocPanel } from "@/components/entityDocs";
 
@@ -34,9 +34,9 @@ export default function IncentiveDetail() {
       {pending && !isAdmin && <div className="banner chip-warn">Waiting for an admin to approve.</div>}
 
       <KpiGrid cols={4}>
-        <Kpi label="Incentive" value={bdtShort(r.incentive_amount)} sub={<span className="num">{bdt(r.incentive_amount)}</span>} />
-        <Kpi label="FOB" value={bdtShort(r.fob)} sub={`at ${Number(r.incentive_pct)}%`} />
-        <Kpi label="EXPs claimed" value={r.incentive_exps.length} sub={bdtShort(r.exp_amount)} />
+        <Kpi label="Incentive" value={moneyShort(r.incentive_amount)} sub={<span className="num">{money(r.incentive_amount)}</span>} />
+        <Kpi label="FOB" value={moneyShort(r.fob)} sub={`at ${Number(r.incentive_pct)}%`} />
+        <Kpi label="EXPs claimed" value={r.incentive_exps.length} sub={moneyShort(r.exp_amount)} />
         <Kpi label="Submitted" value={fmtDate(r.created_at)} sub={r.is_demo ? "Demo" : profiles[r.created_by] ?? ""} />
       </KpiGrid>
 
@@ -44,15 +44,15 @@ export default function IncentiveDetail() {
         <div className="flex flex-col gap-5">
           <Panel title="Calculation">
             <div className="px-4 py-2">
-              <Row label="EXP amount" value={<span className="num">{bdt(r.exp_amount)}</span>} />
-              <Row label="Net proceed" value={<Money bdt={r.net_proceed} usd={r.net_proceed_usd} align="end" />} />
-              <Row label="Freight" value={<Money bdt={r.freight} usd={r.freight_usd} align="end" />} />
-              <Row label="FOB (net minus freight)" value={<span className="num">{bdt(r.fob)}</span>} />
+              <Row label="EXP amount" value={<span className="num">{money(r.exp_amount)}</span>} />
+              <Row label="Net proceed" value={<Money money={r.net_proceed} usd={r.net_proceed_usd} align="end" />} />
+              <Row label="Freight" value={<Money money={r.freight} usd={r.freight_usd} align="end" />} />
+              <Row label="FOB (net minus freight)" value={<span className="num">{money(r.fob)}</span>} />
               <Row label="Incentive rate" value={<span className="num">{Number(r.incentive_pct)}%</span>} />
             </div>
             <div className="flex items-baseline justify-between border-t border-line bg-bg px-4 py-3">
               <span className="lbl">Incentive</span>
-              <span className="num text-[1.125rem] font-semibold">{bdt(r.incentive_amount)}</span>
+              <span className="num text-[1.125rem] font-semibold">{money(r.incentive_amount)}</span>
             </div>
           </Panel>
           <Panel title="EXPs in this claim">
@@ -60,7 +60,7 @@ export default function IncentiveDetail() {
               {r.incentive_exps.map((e) => (
                 <li key={e.exps?.code} className="flex items-center justify-between gap-3 px-4 py-2.5">
                   <span className="code-id min-w-0 truncate text-[0.8438rem]">{e.exps?.code} <span className="text-mut">· {e.exps?.trades?.code}</span></span>
-                  <span className="num shrink-0 text-[0.8438rem]">{bdt(e.amount)}</span>
+                  <span className="num shrink-0 text-[0.8438rem]">{money(e.amount)}</span>
                 </li>
               ))}
             </ul>

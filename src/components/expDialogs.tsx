@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { EXP_DOCS, rpc, useRefresh, useTrades } from "@/lib/api";
-import { bdt, errMsg, rateHint } from "@/lib/format";
+import { money, errMsg, rateHint } from "@/lib/format";
 import type { Exp } from "@/lib/types";
 import { Button, Chip, Field, Grid, Input, Modal, Select, Switch, cn } from "./ui";
 
@@ -87,7 +87,7 @@ export function AddExpDialog({ open, onOpenChange, tradeId: fixedTradeId, availa
             <Select value={pick} onChange={(e) => setPick(e.target.value)} placeholder="Select a trade">
               {activeTrades.map((t) => (
                 <option key={t.id} value={t.id} disabled={t.left <= 0}>
-                  {t.code} · SC {t.sales_contract_no} · {t.importer_name} · left {bdt(t.left)}
+                  {t.code} · SC {t.sales_contract_no} · {t.importer_name} · left {money(t.left)}
                 </option>
               ))}
             </Select>
@@ -100,8 +100,8 @@ export function AddExpDialog({ open, onOpenChange, tradeId: fixedTradeId, availa
             error={over}
             hint={
               <>
-                Available <span className="num">{bdt(available)}</span>
-                {n > 0 && <> · after this EXP <span className="num">{bdt(available - n)}</span></>}
+                Available <span className="num">{money(available)}</span>
+                {n > 0 && <> · after this EXP <span className="num">{money(available - n)}</span></>}
                 {over && " · exceeds the contract amount"}
               </>
             }
@@ -173,8 +173,8 @@ export function EditExpDialog({ exp, onClose }: { exp: Exp; available?: number; 
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-bg p-3.5 text-[0.8125rem]">
           <span className="text-mut">Amount</span>
           <span className="num font-medium">
-            {bdt(exp.amount)}
-            {exp.issued_amount !== undefined && Number(exp.issued_amount) !== Number(exp.amount) && <span className="ml-2 font-normal text-mut">issued {bdt(exp.issued_amount)}</span>}
+            {money(exp.amount)}
+            {exp.issued_amount !== undefined && Number(exp.issued_amount) !== Number(exp.amount) && <span className="ml-2 font-normal text-mut">issued {money(exp.issued_amount)}</span>}
           </span>
         </div>
         <ShipmentInputs value={ship} onChange={setShip} advance={exp.type === "advance"} />

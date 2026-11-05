@@ -1,5 +1,5 @@
 import { Plus, Trash2 } from "lucide-react";
-import { bdt, usdOpt } from "@/lib/format";
+import { money } from "@/lib/format";
 import type { Product } from "@/lib/masters";
 import { isFreight } from "@/lib/masters";
 import { Button, Input } from "./ui";
@@ -14,31 +14,19 @@ export type ItemLine = {
   rate_usd_per_kg: string;
 };
 export const emptyItem = (): ItemLine => ({ description: "", carton_size: "", hs_code: "", incoterm: "CFR", quantity_kg: "", rate_per_kg: "", rate_usd_per_kg: "" });
-export const lineTotal = (i: ItemLine) => Math.round(Number(i.quantity_kg || 0) * Number(i.rate_per_kg || 0) * 100) / 100;
+/** All rates are USD per KG. rate_per_kg mirrors rate_usd_per_kg for the database. */
+export const rateOf = (i: ItemLine) => Number(i.rate_usd_per_kg || i.rate_per_kg || 0);
+export const lineTotal = (i: ItemLine) => Math.round(Number(i.quantity_kg || 0) * rateOf(i) * 100) / 100;
 export const itemsTotal = (items: ItemLine[]) => Math.round(items.reduce((s, i) => s + lineTotal(i), 0) * 100) / 100;
-export const itemsUsdTotal = (items: ItemLine[]) =>
-  items.some((i) => Number(i.rate_usd_per_kg) > 0)
-    ? Math.round(items.reduce((s, i) => s + Number(i.quantity_kg || 0) * Number(i.rate_usd_per_kg || 0), 0) * 100) / 100
-    : null;
 export const itemsValid = (items: ItemLine[]) =>
-  items.length > 0 && items.every((i) => i.description.trim() && Number(i.quantity_kg) > 0 && Number(i.rate_per_kg) > 0);
+  items.length > 0 && items.every((i) => i.description.trim() && Number(i.quantity_kg) > 0 && rateOf(i) > 0);
 
-/** USD mode: the BDT rate is the USD rate times the exchange rate. */
-export const withBdtRates = (items: ItemLine[], xr: number) =>
-  items.map((i) => ({ ...i, rate_per_kg: xr > 0 && Number(i.rate_usd_per_kg) > 0 ? String(Math.round(Number(i.rate_usd_per_kg) * xr * 10000) / 10000) : "" }));
+/** Lines ready for the database: rate_per_kg and rate_usd_per_kg both hold the USD rate. */
+export const withRates = (items: ItemLine[]) =>
+  items.map((i) => ({ ...i, rate_per_kg: rateOf(i) > 0 ? String(rateOf(i)) : "", rate_usd_per_kg: rateOf(i) > 0 ? String(rateOf(i)) : "" }));
 export const goodsLines = (items: ItemLine[]) => items.filter((i) => !isFreight(i.description));
 
 const COLS: { key: keyof ItemLine; label: string; num?: boolean; placeholder?: string; span?: string }[] = [
-  { key: "description", label: "Item description", placeholder: "Fresh vegetables", span: "sm:col-span-2" },
-  { key: "carton_size", label: "Carton size", placeholder: "CTN 1KG x 10KG" },
-  { key: "hs_code", label: "HS code", placeholder: "0709 99 00" },
-  { key: "incoterm", label: "Incoterm", placeholder: "CFR" },
-  { key: "quantity_kg", label: "Qty (KG)", num: true },
-  { key: "rate_per_kg", label: "Rate / KG (BDT)", num: true },
-  { key: "rate_usd_per_kg", label: "Rate / KG (USD, optional)", num: true },
-];
-
-const USD_COLS: typeof COLS = [
   { key: "description", label: "Item description", placeholder: "Pick a product or type", span: "sm:col-span-2" },
   { key: "carton_size", label: "Carton size", placeholder: "1 KG x 10 PCS" },
   { key: "hs_code", label: "HS code", placeholder: "0711 90 00" },
@@ -47,14 +35,10 @@ const USD_COLS: typeof COLS = [
   { key: "rate_usd_per_kg", label: "Rate / KG (USD)", num: true },
 ];
 
-/**
- * BDT mode (default): rates typed in BDT, USD optional.
- * USD mode (pass `xr`): rates typed in USD, BDT computed from the exchange rate; products fill a line.
- */
-export function ItemsEditor({ items, onChange, xr, products }: { items: ItemLine[]; onChange: (i: ItemLine[]) => void; xr?: number; products?: Product[] }) {
-  const usdMode = xr !== undefined;
-  const view = usdMode ? withBdtRates(items, xr) : items;
-  const cols = usdMode ? USD_COLS : COLS;
+/** Item lines in USD; picking a saved product fills carton, HS code, incoterm and rate. */
+export function ItemsEditor({ items, onChange, products }: { items: ItemLine[]; onChange: (i: ItemLine[]) => void; xr?: number; products?: Product[] }) {
+  const view = items;
+  const cols = COLS;
   const set = (idx: number, k: keyof ItemLine, v: string) =>
     onChange(
       items.map((it, i) => {
@@ -70,7 +54,6 @@ export function ItemsEditor({ items, onChange, xr, products }: { items: ItemLine
         return next;
       }),
     );
-  const usdTotal = usdOpt(itemsUsdTotal(items));
   const listId = products?.length ? "product-list" : undefined;
   return (
     <div className="space-y-3">
@@ -80,10 +63,7 @@ export function ItemsEditor({ items, onChange, xr, products }: { items: ItemLine
           <div className="mb-3 flex items-center justify-between">
             <span className="lbl">Line {idx + 1}</span>
             <div className="flex items-center gap-2">
-              <span className="num text-[0.8125rem] font-medium">
-                {usdMode && Number(it.rate_usd_per_kg) > 0 && <span className="mr-2 text-mut">{usdOpt(Number(it.quantity_kg || 0) * Number(it.rate_usd_per_kg))}</span>}
-                {bdt(lineTotal(it))}
-              </span>
+              <span className="num text-[0.8125rem] font-medium">{money(lineTotal(it))}</span>
               <Button variant="ghost" size="icon" className="h-8 w-8" disabled={items.length === 1} onClick={() => onChange(items.filter((_, i) => i !== idx))} aria-label="Remove line">
                 <Trash2 />
               </Button>
@@ -99,17 +79,11 @@ export function ItemsEditor({ items, onChange, xr, products }: { items: ItemLine
                   step={c.num ? "any" : undefined}
                   placeholder={c.placeholder}
                   list={c.key === "description" ? listId : undefined}
-                  value={it[c.key]}
+                  value={c.key === "rate_usd_per_kg" ? it.rate_usd_per_kg || it.rate_per_kg : it[c.key]}
                   onChange={(e) => set(idx, c.key, e.target.value)}
                 />
               </label>
             ))}
-            {usdMode && (
-              <div className="flex flex-col gap-1.5">
-                <span className="text-[0.75rem] text-mut">Rate / KG (BDT)</span>
-                <div className="num flex h-10 items-center rounded-lg border border-line bg-raised/50 px-3 text-mut">{it.rate_per_kg ? bdt(it.rate_per_kg) : "Set rates"}</div>
-              </div>
-            )}
           </div>
         </div>
       ))}
@@ -118,9 +92,8 @@ export function ItemsEditor({ items, onChange, xr, products }: { items: ItemLine
           <Plus /> Add item
         </Button>
         <div className="text-right">
-          <div className="lbl">{usdMode ? "Goods total" : "Total CFR amount"}</div>
-          <div className="num text-[1.25rem] font-semibold">{bdt(itemsTotal(view))}</div>
-          {usdTotal && <div className="num text-[0.75rem] text-mut">{usdTotal}</div>}
+          <div className="lbl">Goods total</div>
+          <div className="num text-[1.25rem] font-semibold">{money(itemsTotal(view))}</div>
         </div>
       </div>
     </div>

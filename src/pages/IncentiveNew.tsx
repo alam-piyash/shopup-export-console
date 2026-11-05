@@ -5,7 +5,7 @@ import { Send } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { INCENTIVE_DOCS, rpc, useRefresh } from "@/lib/api";
-import { bdt, calcIncentive, errMsg, rateHint } from "@/lib/format";
+import { money, calcIncentive, errMsg } from "@/lib/format";
 import type { Exp, UploadedFile } from "@/lib/types";
 import { Button, Chip, Field, Grid, Input, PageHeader, Row, Section, cn } from "@/components/ui";
 import { FileField } from "@/components/files";
@@ -17,8 +17,6 @@ export default function IncentiveNew() {
   const [selected, setSelected] = useState<string[]>([]);
   const [net, setNet] = useState("");
   const [freight, setFreight] = useState("");
-  const [netUsd, setNetUsd] = useState("");
-  const [freightUsd, setFreightUsd] = useState("");
   const [pct, setPct] = useState("");
   const [docs, setDocs] = useState<Record<string, UploadedFile | null>>({});
   const [busy, setBusy] = useState(false);
@@ -57,8 +55,6 @@ export default function IncentiveNew() {
         p_freight: f,
         p_pct: p,
         p_docs: INCENTIVE_DOCS.map((d) => ({ doc_type: d, ...docs[d] })),
-        p_net_usd: netUsd ? Number(netUsd) : null,
-        p_freight_usd: freightUsd ? Number(freightUsd) : null,
       });
       toast.success("Incentive submitted for approval");
       refresh();
@@ -72,7 +68,7 @@ export default function IncentiveNew() {
 
   return (
     <>
-      <PageHeader title="New incentive" sub="Select trades, then collected EXPs, then fill in the calculation. All amounts in BDT." />
+      <PageHeader title="New incentive" sub="Select trades, then collected EXPs, then fill in the calculation. All amounts in USD." />
       <div className="grid items-start gap-6 lg:grid-cols-[1fr_340px]">
         <div className="flex min-w-0 flex-col gap-5">
           <Section step={1} title="Trades" hint="Trades with collected EXPs that are not yet claimed.">
@@ -97,7 +93,7 @@ export default function IncentiveNew() {
                         <div className="truncate text-[0.75rem] text-mut">{t.importer}</div>
                       </div>
                       <Chip label={`${t.count} EXP`} tone="gray" dot={false} />
-                      <span className="num min-w-[6.875rem] text-right text-[0.8125rem]">{bdt(t.total)}</span>
+                      <span className="num min-w-[6.875rem] text-right text-[0.8125rem]">{money(t.total)}</span>
                     </label>
                   );
                 })}
@@ -117,7 +113,7 @@ export default function IncentiveNew() {
                         <div className="text-[0.75rem] text-mut">{e.trade_code} · {e.collection_code}</div>
                       </div>
                       <Chip label="Collected" tone="ok" />
-                      <span className="num min-w-[7.5rem] text-right font-semibold">{bdt(e.amount)}</span>
+                      <span className="num min-w-[7.5rem] text-right font-semibold">{money(e.amount)}</span>
                     </label>
                   );
                 })}
@@ -126,17 +122,11 @@ export default function IncentiveNew() {
           </Section>
           <Section step={3} title="Calculation inputs">
             <Grid>
-              <Field label="Net proceed (BDT)" required hint="After govt and bank charges">
+              <Field label="Net proceed (USD)" required hint="After govt and bank charges">
                 <Input type="number" inputMode="decimal" step="0.01" value={net} onChange={(e) => setNet(e.target.value)} />
               </Field>
-              <Field label="Net proceed (USD, optional)" hint={rateHint(net, netUsd)}>
-                <Input type="number" inputMode="decimal" step="0.01" value={netUsd} onChange={(e) => setNetUsd(e.target.value)} />
-              </Field>
-              <Field label="Freight (BDT)" required>
+              <Field label="Freight (USD)" required>
                 <Input type="number" inputMode="decimal" step="0.01" value={freight} onChange={(e) => setFreight(e.target.value)} />
-              </Field>
-              <Field label="Freight (USD, optional)" hint={rateHint(freight, freightUsd)}>
-                <Input type="number" inputMode="decimal" step="0.01" value={freightUsd} onChange={(e) => setFreightUsd(e.target.value)} />
               </Field>
               <Field label="Incentive %" required>
                 <Input type="number" inputMode="decimal" step="0.01" value={pct} onChange={(e) => setPct(e.target.value)} placeholder="e.g. 10" />
@@ -152,15 +142,15 @@ export default function IncentiveNew() {
         <aside className="flex flex-col gap-3 lg:sticky lg:top-20">
           <div className="card p-5">
             <div className="lbl mb-2">Calculation</div>
-            <Row label={`EXP amount (${selected.length})`} value={<span className="num">{bdt(expAmount)}</span>} />
-            <Row label="Net proceed" value={<span className="num">{bdt(n)}</span>} />
-            <Row label="Freight" value={<span className="num">minus {bdt(f)}</span>} />
-            <Row label="FOB" value={<span className="num font-medium">{bdt(calc.fob)}</span>} />
+            <Row label={`EXP amount (${selected.length})`} value={<span className="num">{money(expAmount)}</span>} />
+            <Row label="Net proceed" value={<span className="num">{money(n)}</span>} />
+            <Row label="Freight" value={<span className="num">minus {money(f)}</span>} />
+            <Row label="FOB" value={<span className="num font-medium">{money(calc.fob)}</span>} />
             <Row label="Incentive %" value={<span className="num">{p}%</span>} />
             <Row label="Attachments" value={<span className="num">{docsDone}/8</span>} />
             <div className="my-3 border-t border-line" />
             <div className="lbl">Incentive</div>
-            <div className="num mt-1 text-[1.75rem] font-semibold">{bdt(calc.incentive)}</div>
+            <div className="num mt-1 text-[1.75rem] font-semibold">{money(calc.incentive)}</div>
             {selected.length > 0 && (n > 0 || p > 0) && calc.errors.map((e) => <p key={e} className="mt-1 text-[0.7812rem] text-bad">{e}</p>)}
           </div>
           <Button className="h-11 w-full" disabled={!valid} loading={busy} onClick={submit}>{!busy && <Send />} Submit for approval</Button>

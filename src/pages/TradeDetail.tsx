@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, FilePen, FileText, Lock, Pencil, Plus, Undo2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { EXP_DOCS, actionLabel, actionTone, useActivity, useIsAdmin, useMe, useProfiles, useTrade, useTradeActions } from "@/lib/api";
-import { bdt, bdtShort, daysUntil, errMsg, fmtDate, fmtDateTime, pct, usd } from "@/lib/format";
+import { money, moneyShort, daysUntil, errMsg, fmtDate, fmtDateTime, pct, usd } from "@/lib/format";
 import type { Amendment, Attachment, Exp, TradeItem } from "@/lib/types";
 import { ApproveReject, Button, Chip, Confirm, Empty, Kpi, KpiGrid, LoadingRows, Money, Panel, Progress, Row, Tabs, cn } from "@/components/ui";
 import { EntityDocList } from "@/components/entityDocs";
@@ -98,10 +98,10 @@ export default function TradeDetail() {
       )}
 
       <KpiGrid>
-        <Kpi label="Contract" value={bdtShort(contract)} usdValue={t.contract_amount_usd} sub={t.exchange_rate ? `Rate ৳${Number(t.exchange_rate)} per USD` : bdt(contract)} />
-        <Kpi label="EXP issued" value={bdtShort(issued)} usdValue={t.exp_issued_usd} sub={<div className="flex items-center gap-2"><Progress value={pct(issued, contract)} /><span className="num">{pct(issued, contract)}%</span></div>} />
-        <Kpi label="Collected" value={bdtShort(t.collected)} usdValue={t.collected_usd} sub={<div className="flex items-center gap-2"><Progress tone="ok" value={pct(t.collected, issued)} /><span className="num">{pct(t.collected, issued)}%</span></div>} />
-        <Kpi label="Available to issue" value={bdtShort(available)} sub={t.tolerance_pct ? `Amount changes allowed up to ${Number(t.tolerance_pct)}% over` : "Left to issue as EXPs"} />
+        <Kpi label="Contract" value={moneyShort(contract)} usdValue={t.contract_amount_usd} sub={money(contract)} />
+        <Kpi label="EXP issued" value={moneyShort(issued)} usdValue={t.exp_issued_usd} sub={<div className="flex items-center gap-2"><Progress value={pct(issued, contract)} /><span className="num">{pct(issued, contract)}%</span></div>} />
+        <Kpi label="Collected" value={moneyShort(t.collected)} usdValue={t.collected_usd} sub={<div className="flex items-center gap-2"><Progress tone="ok" value={pct(t.collected, issued)} /><span className="num">{pct(t.collected, issued)}%</span></div>} />
+        <Kpi label="Available to issue" value={moneyShort(available)} sub={t.tolerance_pct ? `Amount changes allowed up to ${Number(t.tolerance_pct)}% over` : "Left to issue as EXPs"} />
       </KpiGrid>
 
       <div>
@@ -168,8 +168,8 @@ function ExpList({ exps, active, onEdit, onAdd }: { exps: Exp[]; active: boolean
             <Progress value={(e.docs_final / (e.docs_total ?? EXP_DOCS.length)) * 100} tone={e.docs_final === (e.docs_total ?? EXP_DOCS.length) ? "ok" : "accent"} />
           </div>
           <div className="md:w-40 md:text-right">
-            <Money bdt={e.amount} usd={e.amount_usd} className="font-semibold md:items-end" />
-            {e.issued_amount !== undefined && Number(e.issued_amount) !== Number(e.amount) && <div className="num text-[0.7188rem] text-mut">Issued {bdt(e.issued_amount)}</div>}
+            <Money money={e.amount} usd={e.amount_usd} className="font-semibold md:items-end" />
+            {e.issued_amount !== undefined && Number(e.issued_amount) !== Number(e.amount) && <div className="num text-[0.7188rem] text-mut">Issued {money(e.issued_amount)}</div>}
             {e.pending_amount_change_id && <div className="text-[0.7188rem] text-info">Change pending</div>}
           </div>
           <div className="flex gap-1.5">
@@ -208,8 +208,7 @@ function ContractTab({ tradeId }: { tradeId: string }) {
         <Group title="Sales contract">
           <Row label="SC number" value={<span className="code-id">{t.sales_contract_no}</span>} />
           <Row label="Contract date" value={fmtDate(t.contract_date)} />
-          <Row label="Total CFR amount" value={<Money bdt={t.contract_amount} usd={t.contract_amount_usd} align="end" />} />
-          {t.exchange_rate && <Row label="Exchange rate" value={`৳${Number(t.exchange_rate)} per USD`} />}
+          <Row label="Total CFR amount" value={<Money money={t.contract_amount} usd={t.contract_amount_usd} align="end" />} />
           <Row label="Tolerance" value={t.tolerance_pct ? `${Number(t.tolerance_pct)}% more or less at seller's option` : opt(null)} />
           <Row label="Shipping mark" value={opt(t.shipping_mark)} />
           <Row label="Origin" value={opt(t.country_of_origin)} />
@@ -270,13 +269,13 @@ function ContractTab({ tradeId }: { tradeId: string }) {
                     <td className="code-id">{i.hs_code}</td>
                     <td>{i.incoterm}</td>
                     <td className="num">{Number(i.quantity_kg).toLocaleString("en-US")}</td>
-                    <td className="num">{bdt(i.rate_per_kg)}{i.rate_usd_per_kg ? <div className="text-[0.7188rem] text-mut">{usd(i.rate_usd_per_kg)}</div> : null}</td>
-                    <td className="num font-medium">{bdt(i.line_total)}</td>
+                    <td className="num">{money(i.rate_per_kg)}</td>
+                    <td className="num font-medium">{money(i.line_total)}</td>
                   </tr>
                 ))}
                 <tr>
                   <td colSpan={6} className="lbl">Total CFR amount</td>
-                  <td className="num font-semibold">{bdt(t.contract_amount)}</td>
+                  <td className="num font-semibold">{money(t.contract_amount)}</td>
                 </tr>
               </tbody>
             </table>
@@ -327,15 +326,15 @@ function AmendmentsTab({ tradeId }: { tradeId: string }) {
                 <tbody>
                   <tr>
                     <td>Contract amount</td>
-                    <td className="num text-mut">{bdt(r.old_amount)}</td>
+                    <td className="num text-mut">{money(r.old_amount)}</td>
                     <td className="num">
-                      {bdt(r.new_amount)} {delta !== 0 && <span className={cn("ml-1 text-[0.75rem]", delta > 0 ? "text-ok" : "text-bad")}>{delta > 0 ? "+" : ""}{bdt(delta)}</span>}
+                      {money(r.new_amount)} {delta !== 0 && <span className={cn("ml-1 text-[0.75rem]", delta > 0 ? "text-ok" : "text-bad")}>{delta > 0 ? "+" : ""}{money(delta)}</span>}
                     </td>
                   </tr>
                   {r.new_expiry_date && <tr><td>Expiry date</td><td className="text-mut">{r.old_expiry_date ? fmtDate(r.old_expiry_date) : "Not set"}</td><td>{fmtDate(r.new_expiry_date)}</td></tr>}
                   {r.new_shipment_timeline && <tr><td>Shipment timeline</td><td className="text-mut">{r.old_shipment_timeline || "Not set"}</td><td>{r.new_shipment_timeline}</td></tr>}
                   {r.new_items && <tr><td>Item lines</td><td className="text-mut">{(r.old_items ?? []).length} lines</td><td>{r.new_items.length} lines (replaced)</td></tr>}
-                  {changes.map((c) => <tr key={c.code}><td className="num">{c.code}</td><td className="num text-mut">{bdt(c.old_amount)}</td><td className="num">{bdt(c.new_amount)}</td></tr>)}
+                  {changes.map((c) => <tr key={c.code}><td className="num">{c.code}</td><td className="num text-mut">{money(c.old_amount)}</td><td className="num">{money(c.new_amount)}</td></tr>)}
                 </tbody>
               </table>
             </div>
@@ -379,8 +378,8 @@ function ActivityTab({ tradeId }: { tradeId: string }) {
           const bits: string[] = [];
           if (d.code) bits.push(String(d.code));
           if (d.doc) bits.push(String(d.doc));
-          if (d.old_amount !== undefined && d.new_amount !== undefined) bits.push(`${bdt(d.old_amount as number)} to ${bdt(d.new_amount as number)}`);
-          else if (d.amount !== undefined) bits.push(bdt(d.amount as number));
+          if (d.old_amount !== undefined && d.new_amount !== undefined) bits.push(`${money(d.old_amount as number)} to ${money(d.new_amount as number)}`);
+          else if (d.amount !== undefined) bits.push(money(d.amount as number));
           return (
             <li key={a.id} className="relative flex gap-3 pb-5 last:pb-0">
               {i < data.length - 1 && <span className="absolute left-[0.3125rem] top-4 h-full w-px bg-line" />}
