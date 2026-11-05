@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Send, Wand2 } from "lucide-react";
 import { toast } from "sonner";
@@ -7,13 +7,16 @@ import { supabase } from "@/lib/supabase";
 import { COLLECTION_DOCS, rpc, useRefresh } from "@/lib/api";
 import { money, cents, errMsg } from "@/lib/format";
 import type { Exp, UploadedFile } from "@/lib/types";
-import { Button, Chip, Field, Grid, Input, PageHeader, Row, Section, Select, cn } from "@/components/ui";
+import { Button, Chip, Field, Grid, Input, PageHeader, Row, Section, cn } from "@/components/ui";
+import { ExpMultiPicker, TradePicker } from "@/components/pickers";
+import { expNumber } from "@/lib/expFields";
 import { FileField } from "@/components/files";
 
 export default function CollectionNew() {
   const navigate = useNavigate();
   const refresh = useRefresh();
-  const [tradeId, setTradeId] = useState("");
+  const [params] = useSearchParams();
+  const [tradeId, setTradeId] = useState(params.get("trade") ?? "");
   const [amount, setAmount] = useState("");
   const [bankRef, setBankRef] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
@@ -23,9 +26,9 @@ export default function CollectionNew() {
   const { data: trades } = useQuery({
     queryKey: ["trades", "collectable"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("trades").select("id, code, importer_name").in("status", ["active", "revision_pending"]).order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("trades").select("id, code, importer_name, sales_contract_no").in("status", ["active", "revision_pending"]).order("created_at", { ascending: false });
       if (error) throw error;
-      return data as { id: string; code: string; importer_name: string }[];
+      return data as { id: string; code: string; importer_name: string; sales_contract_no: string }[];
     },
   });
   const { data: exps, isLoading: expsLoading } = useQuery({
@@ -90,9 +93,7 @@ export default function CollectionNew() {
         <div className="flex min-w-0 flex-col gap-5">
           <Section step={1} title="Trade and amount received">
             <Field label="Trade" required>
-              <Select value={tradeId} onChange={(e) => { setTradeId(e.target.value); setSelected([]); }} placeholder={trades?.length ? "Select an active trade" : "No active trades"}>
-                {trades?.map((t) => <option key={t.id} value={t.id}>{t.code} · {t.importer_name}</option>)}
-              </Select>
+              <TradePicker trades={trades ?? []} value={tradeId} onChange={(id) => { setTradeId(id); setSelected([]); }} />
             </Field>
             <Grid>
               <Field label="Amount received (USD)" required>
@@ -110,22 +111,12 @@ export default function CollectionNew() {
             right={tradeId && received > 0 && (exps?.length ?? 0) > 0 ? <Button size="sm" variant="outline" onClick={autoMatch}><Wand2 /> Auto match</Button> : undefined}
           >
             {!tradeId ? <p className="text-mut">Select a trade first.</p> : expsLoading ? <p className="text-mut">Loading EXPs</p> : !exps?.length ? <p className="text-mut">No uncollected EXPs on this trade.</p> : (
-              <div className="flex flex-col gap-2">
-                {exps.map((e) => {
-                  const on = selected.includes(e.id);
-                  return (
-                    <label key={e.id} className={cn("sel", on && "on")}>
-                      <input type="checkbox" checked={on} onChange={(ev) => setSelected((s) => (ev.target.checked ? [...s, e.id] : s.filter((x) => x !== e.id)))} />
-                      <div className="min-w-0 flex-1">
-                        <div className="code-id font-medium">{e.code}</div>
-                        <div className="text-[0.75rem] text-mut">Shipment {e.shipment_id || "not set"}</div>
-                      </div>
-                      <Chip status={e.status} />
-                      <span className="num min-w-[7.5rem] text-right font-semibold">{money(e.amount)}</span>
-                    </label>
-                  );
-                })}
-              </div>
+              <ExpMultiPicker
+                exps={exps}
+                selected={selected}
+                onChange={setSelected}
+                meta={(e) => [expNumber(e) && `EXP ${expNumber(e)}`, e.invoice_no && `Inv ${e.invoice_no}`, e.awb_no && `AWB ${e.awb_no}`, e.status === "closed" ? "Closed" : "Open"].filter(Boolean).join(" · ")}
+              />
             )}
           </Section>
           <Section step={3} title="Documents" hint="All four are required.">

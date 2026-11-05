@@ -9,6 +9,8 @@ import { money, calcIncentive, errMsg } from "@/lib/format";
 import type { Exp, UploadedFile } from "@/lib/types";
 import { Button, Chip, Field, Grid, Input, PageHeader, Row, Section, cn } from "@/components/ui";
 import { FileField } from "@/components/files";
+import { ExpMultiPicker, SearchBox } from "@/components/pickers";
+import { expNumber } from "@/lib/expFields";
 
 export default function IncentiveNew() {
   const navigate = useNavigate();
@@ -20,6 +22,7 @@ export default function IncentiveNew() {
   const [pct, setPct] = useState("");
   const [docs, setDocs] = useState<Record<string, UploadedFile | null>>({});
   const [busy, setBusy] = useState(false);
+  const [tq, setTq] = useState("");
 
   const { data: eligible, isLoading } = useQuery({
     queryKey: ["exps", "incentive-eligible"],
@@ -30,9 +33,9 @@ export default function IncentiveNew() {
     },
   });
   const tradeList = useMemo(() => {
-    const m = new Map<string, { id: string; code: string; importer: string; count: number; total: number }>();
+    const m = new Map<string, { id: string; code: string; sc: string; importer: string; count: number; total: number }>();
     (eligible ?? []).forEach((e) => {
-      const cur = m.get(e.trade_id) ?? { id: e.trade_id, code: e.trade_code, importer: e.importer_name, count: 0, total: 0 };
+      const cur = m.get(e.trade_id) ?? { id: e.trade_id, code: e.trade_code, sc: e.sales_contract_no ?? "", importer: e.importer_name, count: 0, total: 0 };
       cur.count++;
       cur.total += Number(e.amount);
       m.set(e.trade_id, cur);
@@ -74,7 +77,8 @@ export default function IncentiveNew() {
           <Section step={1} title="Trades" hint="Trades with collected EXPs that are not yet claimed.">
             {isLoading ? <p className="text-mut">Loading</p> : !tradeList.length ? <p className="text-mut">No collected EXPs available. Collections must be approved first.</p> : (
               <div className="flex flex-col gap-2">
-                {tradeList.map((t) => {
+                {tradeList.length > 5 && <SearchBox value={tq} onChange={setTq} placeholder="Search trade code, SC number or buyer" />}
+                {tradeList.filter((t) => !tq || [t.code, t.sc, t.importer].some((x) => x.toLowerCase().includes(tq.toLowerCase()))).map((t) => {
                   const on = trades.includes(t.id);
                   return (
                     <label key={t.id} className={cn("sel", on && "on")}>
@@ -89,7 +93,7 @@ export default function IncentiveNew() {
                         }}
                       />
                       <div className="min-w-0 flex-1">
-                        <div className="code-id font-medium">{t.code}</div>
+                        <div className="code-id font-medium">{t.code} <span className="font-normal text-mut">· SC {t.sc}</span></div>
                         <div className="truncate text-[0.75rem] text-mut">{t.importer}</div>
                       </div>
                       <Chip label={`${t.count} EXP`} tone="gray" dot={false} />
@@ -102,22 +106,12 @@ export default function IncentiveNew() {
           </Section>
           <Section step={2} title="Collected EXPs" hint="All EXPs of a selected trade are ticked. Untick any you want to leave out.">
             {!trades.length ? <p className="text-mut">Select at least one trade.</p> : (
-              <div className="flex flex-col gap-2">
-                {exps.map((e) => {
-                  const on = selected.includes(e.id);
-                  return (
-                    <label key={e.id} className={cn("sel", on && "on")}>
-                      <input type="checkbox" checked={on} onChange={(ev) => setSelected((s) => (ev.target.checked ? [...s, e.id] : s.filter((x) => x !== e.id)))} />
-                      <div className="min-w-0 flex-1">
-                        <div className="code-id font-medium">{e.code}</div>
-                        <div className="text-[0.75rem] text-mut">{e.trade_code} · {e.collection_code}</div>
-                      </div>
-                      <Chip label="Collected" tone="ok" />
-                      <span className="num min-w-[7.5rem] text-right font-semibold">{money(e.amount)}</span>
-                    </label>
-                  );
-                })}
-              </div>
+              <ExpMultiPicker
+                exps={exps}
+                selected={selected}
+                onChange={setSelected}
+                meta={(e) => [e.trade_code, e.collection_code, expNumber(e) && `EXP ${expNumber(e)}`].filter(Boolean).join(" · ")}
+              />
             )}
           </Section>
           <Section step={3} title="Calculation inputs">
