@@ -202,7 +202,7 @@ const ACTION_LABEL: Record<string, string> = {
   trade_closed: "closed trade",
   exp_created: "added EXP",
   exp_updated: "updated EXP",
-  exp_duplicated: "made Duplicate EXP",
+  exp_duplicated: "made Regular EXP",
   exp_closed: "EXP closed",
   document_uploaded: "uploaded document",
   document_final: "marked document final",

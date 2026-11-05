@@ -9,7 +9,7 @@ import { money, moneyShort, downloadCsv, fmtDate } from "@/lib/format";
 import { expNumber, isShipped, typeLabel } from "@/lib/expFields";
 import { Button, Chip, Empty, Kpi, KpiGrid, LoadingRows, PageHeader, Panel, Segments, cn } from "@/components/ui";
 
-type Filter = "all" | "advance" | "duplicate" | "open" | "closed" | "docs_pending" | "uncollected" | "amount_pending";
+type Filter = "all" | "advance" | "regular" | "open" | "closed" | "docs_pending" | "uncollected" | "amount_pending";
 const PAGE = 200;
 
 export default function Exps() {
@@ -33,7 +33,7 @@ export default function Exps() {
   const match: Record<Filter, (e: (typeof rows)[number]) => boolean> = {
     all: () => true,
     advance: (e) => e.type === "advance",
-    duplicate: (e) => e.type === "regular",
+    regular: (e) => e.type === "regular",
     open: (e) => e.status === "open",
     closed: (e) => e.status === "closed",
     docs_pending: (e) => e.status === "open" && isShipped(e) && e.docs_final < (e.docs_total ?? EXP_DOCS.length),
@@ -72,7 +72,7 @@ export default function Exps() {
       <BulkExpDialog key={bulk ?? "none"} open={!!bulk} onOpenChange={(o) => !o && setBulk(null)} mode={bulk ?? "create"} prefill={bulk === "update" ? (selRows.length ? selRows : shown) : undefined} />
       <KpiGrid>
         <Kpi label="Total EXPs" value={inTrade.length} sub={moneyShort(total(inTrade))} />
-        <Kpi label="Advance" value={count("advance")} sub="Waiting for Duplicate fields" />
+        <Kpi label="Advance" value={count("advance")} sub="Waiting for shipment fields" />
         <Kpi label="Docs pending" value={count("docs_pending")} sub="Shipped, documents not final" />
         <Kpi label="Not collected" value={count("uncollected")} sub={moneyShort(total(inTrade.filter(match.uncollected)))} />
       </KpiGrid>
@@ -84,7 +84,7 @@ export default function Exps() {
             options={[
               { value: "all", label: "All", count: inTrade.length },
               { value: "advance", label: "Advance", count: count("advance") },
-              { value: "duplicate", label: "Duplicate", count: count("duplicate") },
+              { value: "regular", label: "Regular", count: count("regular") },
               { value: "docs_pending", label: "Docs pending", count: count("docs_pending") },
               { value: "uncollected", label: "Uncollected", count: count("uncollected") },
               { value: "closed", label: "Closed", count: count("closed") },

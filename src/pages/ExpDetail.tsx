@@ -11,7 +11,7 @@ import { DocPanel, type DocModel } from "@/components/docs";
 import { EditExpDialog } from "@/components/expDialogs";
 import { CI_DOCS, GenerateCiDialog } from "@/components/ciGenerate";
 import { AmountChangesPanel, ChangeAmountDialog } from "@/components/expAmount";
-import { EXP_FIELDS, expNumber, fieldValue, isRequired, isShipped, typeLabel } from "@/lib/expFields";
+import { EXP_FIELDS, EXP_GROUPS, expNumber, fieldValue, isRequired, isShipped, typeLabel } from "@/lib/expFields";
 
 function ExpFieldsPanel({ exp, onEdit }: { exp: Exp; onEdit: () => void }) {
   const dup = exp.type === "regular";
@@ -20,6 +20,7 @@ function ExpFieldsPanel({ exp, onEdit }: { exp: Exp; onEdit: () => void }) {
     if (!v) return null;
     if (kind === "date") return fmtDate(v);
     if (key === "amount" || key === "freight") return money(v);
+    if (key === "gross_weight") return `${v} kg`;
     return v;
   };
   return (
@@ -27,24 +28,32 @@ function ExpFieldsPanel({ exp, onEdit }: { exp: Exp; onEdit: () => void }) {
       <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5">
         <div>
           <h2 className="text-[0.9375rem] font-semibold">EXP details</h2>
-          <p className="text-[0.75rem] text-mut">Template fields. Locked fields cannot change once saved.</p>
+          <p className="text-[0.75rem] text-mut">Locked fields cannot change once saved.</p>
         </div>
         <Button size="sm" variant="outline" onClick={onEdit}><Pencil /> Edit</Button>
       </div>
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-3 px-5 py-4 sm:grid-cols-3 lg:grid-cols-4">
-        {EXP_FIELDS.map((f) => {
-          const v = show(f.key, f.kind);
-          const needed = isRequired(f, true);
-          return (
-            <div key={f.key} className="min-w-0">
-              <dt className="flex items-center gap-1 text-[0.7188rem] text-mut">{f.label}{f.locked && v && <Lock className="size-3" aria-label="Locked" />}</dt>
-              <dd className={cn("truncate text-[0.8125rem]", !v && "text-mut", !v && needed && (dup || f.stage === "advance") && "text-warn")} title={v ?? undefined}>
-                {v ?? (needed ? "Missing" : "Not set")}
-              </dd>
-            </div>
-          );
-        })}
-      </dl>
+      <div className="flex flex-col divide-y divide-line">
+        {EXP_GROUPS.map((g) => (
+          <div key={g.key} className="px-5 py-4">
+            <div className="lbl mb-2.5">{g.title}</div>
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
+              {EXP_FIELDS.filter((f) => f.group === g.key).map((f) => {
+                const v = show(f.key, f.kind);
+                const needed = isRequired(f, true);
+                const due = !v && (f.stage === "advance" || (dup && f.stage === "regular"));
+                return (
+                  <div key={f.key} className="min-w-0">
+                    <dt className="flex items-center gap-1 text-[0.7188rem] text-mut">{f.label}{f.locked && v && <Lock className="size-3" aria-label="Locked" />}</dt>
+                    <dd className={cn("truncate text-[0.8125rem]", !v && "text-mut", due && "text-warn")} title={v ?? undefined}>
+                      {v ?? (due ? "Missing" : needed ? "For Regular" : "Not set")}
+                    </dd>
+                  </div>
+                );
+              })}
+            </dl>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }
@@ -111,7 +120,7 @@ export default function ExpDetail() {
       {exp.type === "advance" && (
         <div className="banner chip-warn flex-wrap items-center justify-between">
           <span>
-            Advance EXP. {exp.fields_missing ? `${exp.fields_missing} field${exp.fields_missing === 1 ? "" : "s"} still empty for the Duplicate EXP.` : "All fields are filled; mark it a Duplicate EXP."}
+            Advance EXP. {exp.fields_missing ? `${exp.fields_missing} field${exp.fields_missing === 1 ? "" : "s"} still empty before it can be a Regular EXP.` : "All fields are filled. Edit it and switch the type to Regular."}
             {needsShipment && " Add the Ship Date before uploading documents."}
           </span>
           <Button size="sm" variant="outline" onClick={() => setEdit(true)}>Complete fields</Button>
@@ -161,7 +170,7 @@ export default function ExpDetail() {
         })}
         hint="Add a new version each time a copy comes back (Submitted, Signed or your own label), or Generate where a template exists. Earlier versions are kept. Mark final to close a document."
       />
-      {generating && <GenerateCiDialog exp={exp} docs={docs} onClose={() => setGenerating(false)} />}
+      {generating && <GenerateCiDialog exp={exp} docs={docs} onClose={() => setGenerating(false)} onEditExp={() => { setGenerating(false); setEdit(true); }} />}
       {changing && <ChangeAmountDialog exp={exp} limitLeft={data.limitLeft} onClose={() => setChanging(false)} />}
       {edit && <EditExpDialog exp={exp} available={data.available} onClose={() => setEdit(false)} />}
     </>

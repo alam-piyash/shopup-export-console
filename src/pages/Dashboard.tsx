@@ -107,7 +107,7 @@ export default function Dashboard() {
       <div className="grid gap-5 xl:grid-cols-2">
         <Panel title="Needs attention">
           <ul className="divide-y divide-line/70">
-            <Attn label="Advance EXPs waiting for Duplicate fields" n={s.noShipment.length} to="/exps?filter=advance" />
+            <Attn label="Advance EXPs waiting for shipment fields" n={s.noShipment.length} to="/exps?filter=advance" />
             <Attn label="EXPs with documents pending" n={s.docsPending.length} to="/exps?filter=docs_pending" />
             <Attn label="EXPs not yet in a collection" n={s.uncollected.length} to="/exps?filter=uncollected" />
             <Attn label="Contracts expiring in 30 days" n={s.expiring.length} to="/trades?status=active" />

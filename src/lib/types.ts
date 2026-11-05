@@ -116,6 +116,8 @@ export type Exp = {
   custom_code?: string | null;
   export_bill_no?: string | null;
   export_bill_date?: string | null;
+  cartons?: number | null;
+  gross_weight?: Num | null;
   sales_contract_no?: string;
   fields_missing?: number;
 };
