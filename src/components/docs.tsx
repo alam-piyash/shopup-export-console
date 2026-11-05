@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from "react";
 import * as P from "@radix-ui/react-popover";
-import { ArrowUp, Check, CheckCircle2, Download, Eye, FileCheck2, FileClock, History, Loader2, MoreHorizontal, Plus, Upload, X } from "lucide-react";
+import { ArrowUp, Check, CheckCircle2, Download, Eye, FileCheck2, FileClock, History, Loader2, MoreHorizontal, Plus, Upload, WandSparkles, X } from "lucide-react";
 import { toast } from "sonner";
 import { downloadFile, openFile, uploadFile, useProfiles } from "@/lib/api";
 import { errMsg, fileSize, fmtDate, fmtDateTime } from "@/lib/format";
@@ -47,6 +47,8 @@ export type DocModel = {
   folder: string;
   disabled?: string | null;
   extraMenu?: { label: string; icon: ReactNode; onClick: () => void }[];
+  /** A template exists: show Generate. The generated file is added as a new version. */
+  generate?: { onClick: () => void; disabled?: string | null };
   onAdd: (v: { file: UploadedFile; stage: string; note: string; submittedOn: string }) => Promise<unknown>;
   onFinal: () => Promise<unknown>;
   canFinalAfterAdd?: boolean;
@@ -148,6 +150,7 @@ export function DocCard({ doc, small, defaultOpen }: { doc: DocModel; n?: number
       { label: "Download latest", icon: <Download />, onClick: run(() => downloadFile(latest.file_path, latest.file_name)) },
     ] : []),
     ...(canAdd ? [{ label: latest ? "Add version" : "Upload", icon: <Upload />, onClick: () => setAdding(true), disabled: !!doc.disabled }] : []),
+    ...(canAdd && doc.generate ? [{ label: "Generate from template", icon: <WandSparkles />, onClick: doc.generate.onClick, disabled: !!doc.generate.disabled || !!doc.disabled }] : []),
     ...(doc.extraMenu ?? []),
     ...(hasHistory ? [{ label: open ? "Hide history" : `Version history (${doc.versions.length})`, icon: <History />, onClick: () => setOpen((o) => !o) }] : []),
     ...(finalOpen ? [{ label: verb, icon: <CheckCircle2 />, onClick: () => setFinalizing(true), disabled: !canFinal, tone: "ok" as const, divider: true }] : []),
@@ -178,6 +181,9 @@ export function DocCard({ doc, small, defaultOpen }: { doc: DocModel; n?: number
             <span className="num text-fg/65">{detail}</span>
           </span>
         </button>
+        {doc.generate && canAdd && (
+          <Button size="sm" variant="outline" className="rounded-full px-3.5" disabled={!!doc.generate.disabled || !!doc.disabled} title={doc.generate.disabled ?? doc.disabled ?? "Generate from the template"} onClick={doc.generate.onClick}><WandSparkles /> <span className="hidden sm:inline">Generate</span></Button>
+        )}
         {!latest && canAdd && (
           <Button size="sm" className="rounded-full px-4" disabled={!!doc.disabled} title={doc.disabled ?? undefined} onClick={() => setAdding(true)}><Upload /> Upload</Button>
         )}

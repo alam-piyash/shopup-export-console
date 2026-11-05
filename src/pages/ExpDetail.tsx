@@ -9,6 +9,7 @@ import type { Exp, ExpDoc, ExpDocVersion } from "@/lib/types";
 import { Button, Chip, Empty, Kpi, KpiGrid, LoadingRows, Progress, cn } from "@/components/ui";
 import { DocPanel, type DocModel } from "@/components/docs";
 import { EditExpDialog } from "@/components/expDialogs";
+import { CI_DOCS, GenerateCiDialog } from "@/components/ciGenerate";
 import { AmountChangesPanel, ChangeAmountDialog } from "@/components/expAmount";
 import { EXP_FIELDS, expNumber, fieldValue, isRequired, isShipped, typeLabel } from "@/lib/expFields";
 
@@ -52,6 +53,7 @@ export default function ExpDetail() {
   const { expId = "" } = useParams();
   const [edit, setEdit] = useState(false);
   const [changing, setChanging] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const refresh = useRefresh();
   const { data, isLoading, error } = useQuery({
     queryKey: ["exp", expId],
@@ -146,6 +148,7 @@ export default function ExpDetail() {
             versions,
             folder: "exps",
             disabled: needsShipment ? "Add the Ship Date first" : null,
+            generate: CI_DOCS.includes(d.doc_type) ? { onClick: () => setGenerating(true) } : undefined,
             onAdd: async ({ file, stage, note, submittedOn }) => {
               await rpc("upload_exp_document", { p_doc: d.id, p_file: file, p_stage: stage, p_note: note || null, p_submitted_on: submittedOn || null });
               refresh();
@@ -156,8 +159,9 @@ export default function ExpDetail() {
             },
           } satisfies DocModel;
         })}
-        hint="Add a new version each time a copy comes back (Submitted, Signed or your own label). Earlier versions are kept. Mark final to close a document."
+        hint="Add a new version each time a copy comes back (Submitted, Signed or your own label), or Generate where a template exists. Earlier versions are kept. Mark final to close a document."
       />
+      {generating && <GenerateCiDialog exp={exp} docs={docs} onClose={() => setGenerating(false)} />}
       {changing && <ChangeAmountDialog exp={exp} limitLeft={data.limitLeft} onClose={() => setChanging(false)} />}
       {edit && <EditExpDialog exp={exp} available={data.available} onClose={() => setEdit(false)} />}
     </>
