@@ -4,6 +4,7 @@ import { ArrowLeftRight, CheckCircle2, Coins, Ship, Wallet } from "lucide-react"
 import { EXP_DOCS, actionLabel, actionTone, useActivity, useAllExps, useCollections, useDecide, useIncentives, useMe, useProfiles, useTradeActions, useTrades } from "@/lib/api";
 import { followupState } from "@/components/contractPanel";
 import { money, moneyShort, daysUntil, fmtDate, pct, timeAgo } from "@/lib/format";
+import { isShipped } from "@/lib/expFields";
 import { ApproveReject, Chip, Empty, Kpi, KpiGrid, Panel, Skeleton, cn } from "@/components/ui";
 
 export default function Dashboard() {
@@ -28,8 +29,8 @@ export default function Dashboard() {
     const incApproved = sum((incs.data ?? []).filter((i) => i.status === "approved"), (i: { incentive_amount: number }) => i.incentive_amount);
     const incPending = sum((incs.data ?? []).filter((i) => i.status === "pending_approval"), (i: { incentive_amount: number }) => i.incentive_amount);
     const openExps = (exps.data ?? []).filter((e) => e.status === "open");
-    const noShipment = openExps.filter((e) => !e.shipment_id);
-    const docsPending = openExps.filter((e) => e.shipment_id && e.docs_final < (e.docs_total ?? EXP_DOCS.length));
+    const noShipment = openExps.filter((e) => e.type === "advance");
+    const docsPending = openExps.filter((e) => isShipped(e) && e.docs_final < (e.docs_total ?? EXP_DOCS.length));
     const uncollected = (exps.data ?? []).filter((e) => !e.collection_status && e.trade_status !== "rejected");
     const expiring = live
       .filter((t) => t.status === "active" && t.expiry_date)
@@ -106,7 +107,7 @@ export default function Dashboard() {
       <div className="grid gap-5 xl:grid-cols-2">
         <Panel title="Needs attention">
           <ul className="divide-y divide-line/70">
-            <Attn label="Advance EXPs without shipment ID" n={s.noShipment.length} to="/exps?filter=no_shipment" />
+            <Attn label="Advance EXPs waiting for Duplicate fields" n={s.noShipment.length} to="/exps?filter=advance" />
             <Attn label="EXPs with documents pending" n={s.docsPending.length} to="/exps?filter=docs_pending" />
             <Attn label="EXPs not yet in a collection" n={s.uncollected.length} to="/exps?filter=uncollected" />
             <Attn label="Contracts expiring in 30 days" n={s.expiring.length} to="/trades?status=active" />

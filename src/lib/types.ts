@@ -96,6 +96,28 @@ export type Exp = {
   issued_amount_usd?: Num | null;
   pending_amount_change_id?: string | null;
   amount_changes?: number;
+  lc_contract?: string | null;
+  importer?: string | null;
+  exp_serial?: string | null;
+  exp_year?: number | null;
+  entry_date?: string | null;
+  hs_code?: string | null;
+  unit_iso?: string | null;
+  incoterm?: string | null;
+  quantity?: Num | null;
+  freight?: Num | null;
+  dest_port?: string | null;
+  dup_flag?: string | null;
+  dup_date?: string | null;
+  invoice_no?: string | null;
+  invoice_date?: string | null;
+  carrier?: string | null;
+  trans_doc_date?: string | null;
+  custom_code?: string | null;
+  export_bill_no?: string | null;
+  export_bill_date?: string | null;
+  sales_contract_no?: string;
+  fields_missing?: number;
 };
 
 export type ExpAmountChange = {

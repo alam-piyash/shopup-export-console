@@ -204,7 +204,7 @@ function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (
       ...NAV.map((n) => ({ label: n.label, sub: "Go to page", to: n.to })),
     ];
     const t = (trades ?? []).map((x) => ({ label: `${x.code} · ${x.importer_name}`, sub: `SC ${x.sales_contract_no} · ${x.products}`, to: `/trades/${x.id}` }));
-    const e = (exps ?? []).map((x) => ({ label: `${x.code}`, sub: `${x.trade_code} · ${x.importer_name} · Shipment ${x.shipment_id || "not set"}`, to: `/exps/${x.id}` }));
+    const e = (exps ?? []).map((x) => ({ label: `${x.code}`, sub: `${x.trade_code} · ${x.importer_name}${x.exp_no ? ` · EXP ${x.exp_no}` : ""}${x.awb_no ? ` · AWB ${x.awb_no}` : ""}`, to: `/exps/${x.id}` }));
     const all = [...pages, ...t, ...e];
     if (!s) return all.slice(0, 9);
     return all.filter((r) => (r.label + " " + r.sub).toLowerCase().includes(s)).slice(0, 12);

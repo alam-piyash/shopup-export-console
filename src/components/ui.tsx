@@ -272,6 +272,7 @@ export function Modal({
   children,
   footer,
   wide,
+  xwide,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -280,6 +281,7 @@ export function Modal({
   children?: ReactNode;
   footer?: ReactNode;
   wide?: boolean;
+  xwide?: boolean;
 }) {
   return (
     <D.Root open={open} onOpenChange={onOpenChange}>
@@ -288,7 +290,7 @@ export function Modal({
         <D.Content
           className={cn(
             "fixed left-1/2 top-1/2 z-50 flex max-h-[90vh] w-[calc(100vw-24px)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl border border-line bg-surface shadow-2xl outline-none",
-            wide ? "max-w-2xl" : "max-w-lg",
+            xwide ? "max-w-5xl" : wide ? "max-w-2xl" : "max-w-lg",
           )}
         >
           <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">

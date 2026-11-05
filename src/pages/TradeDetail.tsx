@@ -6,10 +6,12 @@ import { supabase } from "@/lib/supabase";
 import { EXP_DOCS, actionLabel, actionTone, useActivity, useIsAdmin, useMe, useProfiles, useTrade, useTradeActions } from "@/lib/api";
 import { money, moneyShort, daysUntil, errMsg, fmtDate, fmtDateTime, pct, usd } from "@/lib/format";
 import type { Amendment, Attachment, Exp, TradeItem } from "@/lib/types";
-import { ApproveReject, Button, Chip, Confirm, Empty, Kpi, KpiGrid, LoadingRows, Money, Panel, Progress, Row, Tabs, cn } from "@/components/ui";
+import { ApproveReject, Button, Chip, Confirm, Empty, Kpi, KpiGrid, LoadingRows, Money, Panel, Progress, Row, Segments, Tabs, cn } from "@/components/ui";
 import { EntityDocList } from "@/components/entityDocs";
 import { AddExpDialog, EditExpDialog } from "@/components/expDialogs";
 import { ContractVersions, FollowupsPanel } from "@/components/contractPanel";
+import { SearchBox, expMatches } from "@/components/pickers";
+import { expNumber, typeLabel } from "@/lib/expFields";
 
 type Tab = "exps" | "contract" | "amendments" | "activity";
 
@@ -135,32 +137,53 @@ export default function TradeDetail() {
   );
 }
 
-function ExpList({ exps, active, onEdit, onAdd }: { exps: Exp[]; active: boolean; onEdit: (e: Exp) => void; onAdd: () => void }) {
-  if (!exps.length)
+function ExpList({ exps: all, active, onEdit, onAdd }: { exps: Exp[]; active: boolean; onEdit: (e: Exp) => void; onAdd: () => void }) {
+  const [q, setQ] = useState("");
+  const [kind, setKind] = useState<"all" | "advance" | "regular" | "uncollected">("all");
+  const [limit, setLimit] = useState(50);
+  const exps = all.filter((e) => expMatches(e, q) && (kind === "all" || (kind === "uncollected" ? !e.collection_status : e.type === kind)));
+  const head = all.length > 5 && (
+    <div className="flex flex-wrap items-center gap-2">
+      <SearchBox value={q} onChange={(v) => { setQ(v); setLimit(50); }} placeholder={`Search ${all.length} EXPs: code, EXP number, AWB, invoice`} className="min-w-[14rem] flex-1" />
+      <Segments
+        value={kind}
+        onChange={setKind}
+        options={[
+          { value: "all", label: "All", count: all.length },
+          { value: "advance", label: "Advance", count: all.filter((e) => e.type === "advance").length },
+          { value: "regular", label: "Duplicate", count: all.filter((e) => e.type === "regular").length },
+          { value: "uncollected", label: "Uncollected", count: all.filter((e) => !e.collection_status).length },
+        ]}
+      />
+    </div>
+  );
+  if (!all.length)
     return (
       <Panel>
         <Empty
           icon={<FileText />}
           title="No EXPs yet"
-          body={active ? "Add one EXP per shipment. Advance EXPs can get their shipment ID later." : "EXPs can be added once the trade is active."}
+          body={active ? "Add EXPs one by one, or import many from the EXPs page. Advance EXPs get their Duplicate fields later." : "EXPs can be added once the trade is active."}
           action={active && <Button onClick={onAdd}><Plus /> Add EXP</Button>}
         />
       </Panel>
     );
   return (
     <div className="flex flex-col gap-2.5">
-      {exps.map((e) => (
+      {head}
+      {exps.length === 0 && <p className="py-6 text-center text-[0.8125rem] text-mut">No EXPs match</p>}
+      {exps.slice(0, limit).map((e) => (
         <div key={e.id} className="card flex flex-col gap-4 p-4 transition hover:border-mut/40 md:flex-row md:items-center">
           <Link to={`/exps/${e.id}`} className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="code-id font-semibold">{e.code}</span>
               <Chip status={e.status} />
-              {e.type === "advance" && <Chip label="Advance" tone="info" dot={false} />}
+              <Chip label={typeLabel(e.type)} tone={e.type === "advance" ? "info" : "gray"} dot={false} />
               {e.collection_status && <Chip label={e.collection_status === "approved" ? "Collected" : "Collection pending"} tone={e.collection_status === "approved" ? "ok" : "warn"} />}
               {e.incentive_status && <Chip label={e.incentive_status === "approved" ? "Incentive approved" : "Incentive pending"} tone={e.incentive_status === "approved" ? "ok" : "warn"} dot={false} />}
             </div>
             <div className="mt-1 text-[0.7812rem] text-mut">
-              Shipment {e.shipment_id || "not set"}{e.awb_no ? ` · AWB ${e.awb_no}` : ""}{e.shipment_date ? ` · ${fmtDate(e.shipment_date)}` : ""}
+              {expNumber(e) ? `EXP ${expNumber(e)}` : "EXP number not set"}{e.awb_no ? ` · AWB ${e.awb_no}` : ""}{e.shipment_date ? ` · Shipped ${fmtDate(e.shipment_date)}` : ""}{e.fields_missing ? ` · ${e.fields_missing} fields missing` : ""}
             </div>
           </Link>
           <div className="w-full md:w-44">
@@ -178,6 +201,7 @@ function ExpList({ exps, active, onEdit, onAdd }: { exps: Exp[]; active: boolean
           </div>
         </div>
       ))}
+      {exps.length > limit && <Button variant="outline" className="self-center" onClick={() => setLimit((l) => l + 50)}>Show {Math.min(50, exps.length - limit)} more of {exps.length}</Button>}
     </div>
   );
 }

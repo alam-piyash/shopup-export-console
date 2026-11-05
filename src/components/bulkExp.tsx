@@ -1,15 +1,36 @@
 import { useRef, useState } from "react";
 import { Download, FileSpreadsheet, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { rpc, useAllExps, useRefresh, useTrades } from "@/lib/api";
+import { rpc, useRefresh } from "@/lib/api";
 import { money, downloadCsv, errMsg } from "@/lib/format";
-import { Button, Chip, Modal } from "./ui";
+import { EXP_FIELDS, fieldValue, typeLabel } from "@/lib/expFields";
+import type { Exp } from "@/lib/types";
+import { Button, Chip, Modal, cn } from "./ui";
 
-const HEADERS = ["SC number", "Shipment ID", "EXP number", "AWB number", "Flight number", "Shipment date", "Amount BDT", "Amount USD", "Advance"] as const;
-type Raw = Record<(typeof HEADERS)[number], string>;
-type Row = Raw & { n: number; tradeId?: string; tradeCode?: string; amount: number; amountUsd: number | null; advance: boolean; date: string; errors: string[]; result?: "ok" | string };
+export type BulkMode = "create" | "update";
 
-/** Splits CSV text into rows, handling quotes. */
+/** File columns: Trade Code, EXP Type, the 23 template fields, then Flight No and Shipment ID. */
+export const FILE_HEADERS = ["Trade Code", "EXP Type", ...EXP_FIELDS.map((f) => f.label)];
+
+const key = (s: unknown) => String(s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+const ALIASES: Record<string, string> = {
+  tradecode: "trade_code", tradeid: "trade_code", trade: "trade_code",
+  exptype: "type", type: "type",
+  lccontract: "lc_contract", lccontact: "lc_contract",
+  amountinv: "amount", amount: "amount", amountusd: "amount",
+  transdocnoawb: "awb_no", awbno: "awb_no",
+};
+for (const f of EXP_FIELDS) ALIASES[key(f.label)] = f.key;
+
+/** One row per EXP for the file, using the template column names. */
+export function expRowsForFile(exps: Exp[]) {
+  return exps.map((e) => ({
+    "Trade Code": e.trade_code,
+    "EXP Type": typeLabel(e.type),
+    ...Object.fromEntries(EXP_FIELDS.map((f) => [f.label, fieldValue(e, f.key)])),
+  }));
+}
+
 function parseCsv(text: string): string[][] {
   const out: string[][] = [];
   let row: string[] = [], cur = "", q = false;
@@ -27,7 +48,7 @@ function parseCsv(text: string): string[][] {
     } else cur += c;
   }
   if (cur || row.length) { row.push(cur); out.push(row); }
-  return out.filter((r) => r.some((x) => x.trim()));
+  return out.filter((r) => r.some((x) => String(x).trim()));
 }
 
 const toDate = (v: unknown): string => {
@@ -38,55 +59,46 @@ const toDate = (v: unknown): string => {
   if (m) return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
   m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(s);
   if (m) return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
-  return "invalid";
+  m = /^(\d{1,2})[ -]([A-Za-z]{3})[A-Za-z]*[ -](\d{4})$/.exec(s);
+  if (m) {
+    const mo = "janfebmaraprmayjunjulaugsepoctnovdec".indexOf(m[2].toLowerCase()) / 3 + 1;
+    if (mo > 0) return `${m[3]}-${String(mo).padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+  }
+  return s; // the server reports it as not a valid date
 };
-const num = (v: string) => Number(String(v ?? "").replace(/[,$৳\s]/g, "")) || 0;
+const cell = (v: unknown) => (v instanceof Date ? v.toISOString().slice(0, 10) : String(v ?? "").trim());
+const num = (v: string) => v.replace(/[,$\s]/g, "");
 
-export function BulkExpDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
-  const { data: trades } = useTrades();
-  const { data: exps } = useAllExps();
+type FileRow = { n: number; trade_code: string; type: string; amount: string; fields: Record<string, string>; label: string };
+type Result = { n: number; ok: boolean; code?: string; error?: string };
+type BulkResult = { ok: number; errors: number; committed: boolean; rows: Result[] };
+
+const CHUNK = 500;
+
+async function runBulk(mode: BulkMode, rows: FileRow[], commit: boolean, onProgress?: (done: number) => void) {
+  const all: Result[] = [];
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const part = rows.slice(i, i + CHUNK).map(({ n, trade_code, type, amount, fields }) => ({ n, trade_code, type, amount, fields }));
+    const res = await rpc<BulkResult>("bulk_exps", { p_mode: mode, p_rows: part, p_commit: commit });
+    all.push(...res.rows);
+    onProgress?.(Math.min(rows.length, i + CHUNK));
+  }
+  return all;
+}
+
+export function BulkExpDialog({ open, onOpenChange, mode = "create", prefill }: { open: boolean; onOpenChange: (o: boolean) => void; mode?: BulkMode; prefill?: Exp[] }) {
   const refresh = useRefresh();
   const ref = useRef<HTMLInputElement>(null);
-  const [rows, setRows] = useState<Row[]>([]);
+  const [rows, setRows] = useState<FileRow[]>([]);
+  const [checks, setChecks] = useState<Record<number, Result>>({});
+  const [done, setDone] = useState<Record<number, Result>>({});
   const [fileName, setFileName] = useState("");
-  const [reading, setReading] = useState(false);
-  const [running, setRunning] = useState(false);
-
-  function validate(raw: Raw[]): Row[] {
-    const used = new Map<string, number>();
-    const seenExp = new Set<string>();
-    const existingExp = new Set((exps ?? []).map((e) => (e.exp_no ?? "").toLowerCase()).filter(Boolean));
-    return raw.map((r, i) => {
-      const errors: string[] = [];
-      const sc = (r["SC number"] ?? "").trim().toLowerCase();
-      const t = (trades ?? []).find((x) => x.sales_contract_no.toLowerCase() === sc || x.code.toLowerCase() === sc);
-      if (!sc) errors.push("SC number missing");
-      else if (!t) errors.push("Trade not found");
-      else if (t.status !== "active") errors.push("Trade is not active");
-      else if (t.contract_signed === false) errors.push("Sales contract not signed");
-      const advance = /^(y|yes|true|1|advance)$/i.test((r.Advance ?? "").trim());
-      const usdV = num(r["Amount USD"]);
-      let amount = num(r["Amount BDT"]);
-      if (!amount && usdV && t?.exchange_rate) amount = Math.round(usdV * Number(t.exchange_rate) * 100) / 100;
-      if (!(amount > 0)) errors.push("Amount missing");
-      if (!advance && !(r["Shipment ID"] ?? "").trim()) errors.push("Shipment ID needed (or mark Advance)");
-      const date = toDate(r["Shipment date"]);
-      if (date === "invalid") errors.push("Date not understood");
-      const expNo = (r["EXP number"] ?? "").trim().toLowerCase();
-      if (expNo && (existingExp.has(expNo) || seenExp.has(expNo))) errors.push("EXP number already used");
-      if (expNo) seenExp.add(expNo);
-      if (t && amount > 0) {
-        const after = (used.get(t.id) ?? Number(t.exp_issued ?? 0)) + amount;
-        if (after > Number(t.contract_amount) + 0.0001) errors.push(`Over contract by ${money(after - Number(t.contract_amount))}`);
-        used.set(t.id, after);
-      }
-      return { ...r, n: i + 2, tradeId: t?.id, tradeCode: t?.code, amount, amountUsd: usdV || null, advance, date: date === "invalid" ? "" : date, errors };
-    });
-  }
+  const [busy, setBusy] = useState<string | null>(null);
+  const create = mode === "create";
 
   async function read(f?: File) {
     if (!f) return;
-    setReading(true);
+    setBusy("Reading file");
     try {
       let grid: unknown[][];
       if (/\.xlsx$/i.test(f.name)) {
@@ -95,108 +107,157 @@ export function BulkExpDialog({ open, onOpenChange }: { open: boolean; onOpenCha
       } else {
         grid = parseCsv((await f.text()).replace(/^﻿/, ""));
       }
-      const head = (grid[0] ?? []).map((h) => String(h ?? "").trim().toLowerCase());
-      const idx = HEADERS.map((h) => head.indexOf(h.toLowerCase()));
-      if (idx[0] < 0) throw new Error("The first row must hold the template headers (SC number, Shipment ID, ...). Download the template.");
-      const raw = grid.slice(1).map((r) => Object.fromEntries(HEADERS.map((h, j) => [h, idx[j] >= 0 ? (r[idx[j]] instanceof Date ? (r[idx[j]] as Date).toISOString().slice(0, 10) : String(r[idx[j]] ?? "")) : ""])) as Raw);
-      if (!raw.length) throw new Error("No rows found under the headers");
-      if (raw.length > 200) throw new Error("Up to 200 rows per file");
-      setRows(validate(raw));
+      // the header row is the first row that names EXP Serial
+      const hi = grid.findIndex((r) => r.some((c) => key(c) === "expserial"));
+      if (hi < 0) throw new Error("No header row found. The file needs the template columns (EXP Serial, EXP Year, ...). Download the template.");
+      const cols = grid[hi].map((h) => ALIASES[key(h)] ?? null);
+      if (create && !cols.includes("trade_code")) throw new Error("Add a Trade Code column (for example TRD-0003) for new EXPs.");
+      const body = grid.slice(hi + 1);
+      const parsed: FileRow[] = [];
+      body.forEach((r, i) => {
+        if (r.some((c) => key(c) === "expserial")) return; // a repeated header row
+        const vals: Record<string, string> = {};
+        cols.forEach((k, j) => {
+          if (!k) return;
+          let v = cell(r[j]);
+          if (/^mandatory$/i.test(v)) v = "";
+          const f = EXP_FIELDS.find((x) => x.key === k);
+          if (v && f?.kind === "date") v = toDate(r[j]);
+          if (v && (f?.kind === "number" || k === "amount")) v = num(v);
+          if (v && f?.kind === "year") v = v.replace(/\.0+$/, "");
+          vals[k] = v;
+        });
+        if (!Object.entries(vals).some(([k, v]) => v && k !== "type")) return; // empty or "Mandatory" marker rows
+        const { trade_code = "", type = "", amount = "", ...fields } = vals;
+        // empty cells leave values unchanged on update
+        const kept = Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== ""));
+        parsed.push({ n: hi + i + 2, trade_code, type, amount, fields: kept, label: kept.exp_serial && kept.exp_year ? `${kept.exp_serial}/${kept.exp_year}` : "" });
+      });
+      if (!parsed.length) throw new Error("No EXP rows found under the headers");
+      if (parsed.length > 2000) throw new Error("Up to 2000 rows per file");
+      setRows(parsed);
       setFileName(f.name);
+      setDone({});
+      setBusy(`Checking ${parsed.length} rows`);
+      const res = await runBulk(mode, parsed, false);
+      setChecks(Object.fromEntries(res.map((r) => [r.n, r])));
     } catch (e) {
       toast.error(errMsg(e));
     } finally {
-      setReading(false);
+      setBusy(null);
       if (ref.current) ref.current.value = "";
     }
   }
 
+  const ready = rows.filter((r) => checks[r.n]?.ok && !done[r.n]?.ok);
   async function run() {
-    setRunning(true);
-    const next = [...rows];
-    let ok = 0;
-    for (let i = 0; i < next.length; i++) {
-      const r = next[i];
-      if (r.errors.length || r.result === "ok") continue;
-      try {
-        await rpc("create_exp", {
-          p_trade: r.tradeId,
-          p_amount: r.amount,
-          p_advance: r.advance,
-          p_fields: { shipment_id: r["Shipment ID"].trim(), exp_no: r["EXP number"].trim(), awb_no: r["AWB number"].trim(), flight_no: r["Flight number"].trim(), shipment_date: r.date, amount_usd: r.amountUsd },
-        });
-        next[i] = { ...r, result: "ok" };
-        ok++;
-      } catch (e) {
-        next[i] = { ...r, result: errMsg(e) };
-      }
-      setRows([...next]);
+    setBusy(create ? "Creating EXPs" : "Updating EXPs");
+    try {
+      const res = await runBulk(mode, ready, true, (d) => setBusy(`${create ? "Creating" : "Updating"} ${d} of ${ready.length}`));
+      setDone((s) => ({ ...s, ...Object.fromEntries(res.map((r) => [r.n, r])) }));
+      const ok = res.filter((r) => r.ok).length;
+      const bad = res.length - ok;
+      toast[bad ? "warning" : "success"](`${ok} EXP${ok === 1 ? "" : "s"} ${create ? "created" : "updated"}${bad ? `, ${bad} failed` : ""}`);
+      refresh();
+    } catch (e) {
+      toast.error(errMsg(e));
+    } finally {
+      setBusy(null);
     }
-    setRunning(false);
-    refresh();
-    toast.success(`${ok} EXP${ok === 1 ? "" : "s"} created`);
   }
 
-  const ready = rows.filter((r) => !r.errors.length && r.result !== "ok").length;
-  const close = (o: boolean) => { if (!running) { onOpenChange(o); if (!o) { setRows([]); setFileName(""); } } };
+  const close = (o: boolean) => { if (!busy) { onOpenChange(o); if (!o) { setRows([]); setChecks({}); setDone({}); setFileName(""); } } };
+  const failing = rows.filter((r) => checks[r.n] && !checks[r.n].ok).length;
+
+  function template() {
+    if (!create && prefill?.length) {
+      downloadCsv(`exp-update-${new Date().toISOString().slice(0, 10)}.csv`, expRowsForFile(prefill));
+      return;
+    }
+    const example: Record<string, string> = Object.fromEntries(FILE_HEADERS.map((h) => [h, ""]));
+    Object.assign(example, {
+      "Trade Code": "TRD-0003", "EXP Type": "Advance", "EXP Serial": "026361", "EXP Year": "2026", "Entry Date": "2026-04-26",
+      HSCODE: "07099990", "Unit ISO": "KGM", Incoterm: "CFR", Quantity: "2100", "Amount Inv": "5250", Freight: "1050",
+    });
+    downloadCsv("exp-template.csv", [example]);
+  }
 
   return (
     <Modal
       open={open}
       onOpenChange={close}
-      wide
-      title="Import EXPs"
-      description="Add many EXPs at once from the Bangladesh Bank entries. One row per EXP."
+      xwide
+      title={create ? "Import new EXPs" : "Bulk update EXPs"}
+      description={
+        create
+          ? "One row per EXP. Each row names its trade by Trade Code. An EXP number (EXP Serial + EXP Year) can only exist once."
+          : "Rows are matched by EXP Serial + EXP Year. Empty cells leave the saved value as it is. Locked fields and Amount Inv cannot change here."
+      }
       footer={
         <>
-          <Button variant="outline" onClick={() => close(false)} disabled={running}>{rows.some((r) => r.result === "ok") ? "Done" : "Cancel"}</Button>
-          <Button disabled={!ready || running} loading={running} onClick={run}>Create {ready || ""} EXP{ready === 1 ? "" : "s"}</Button>
+          {busy && <span className="mr-auto flex items-center gap-2 self-center text-[0.8125rem] text-mut"><Loader2 className="size-4 animate-spin" /> {busy}</span>}
+          <Button variant="outline" onClick={() => close(false)} disabled={!!busy}>{Object.values(done).some((r) => r.ok) ? "Done" : "Cancel"}</Button>
+          <Button disabled={!ready.length || !!busy} onClick={run}>
+            {create ? "Create" : "Update"} {ready.length || ""} EXP{ready.length === 1 ? "" : "s"}
+          </Button>
         </>
       }
     >
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() =>
-              downloadCsv("exp-import-template.csv", [
-                { "SC number": "VEG/SU/36", "Shipment ID": "SH-1001", "EXP number": "1234-000123-2026", "AWB number": "176-12345675", "Flight number": "EK585", "Shipment date": "2026-11-01", "Amount BDT": "", "Amount USD": "26400", Advance: "no" },
-              ])
-            }
-          >
-            <Download /> Template
+          <Button size="sm" variant="outline" onClick={template}>
+            <Download /> {create ? "Template" : prefill?.length ? `Download ${prefill.length} selected EXPs` : "Template"}
           </Button>
           <input ref={ref} type="file" className="hidden" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(e) => read(e.target.files?.[0])} />
-          <Button size="sm" disabled={reading || running} onClick={() => ref.current?.click()}>
-            {reading ? <Loader2 className="animate-spin" /> : <FileSpreadsheet />} {fileName ? "Choose another file" : "Choose CSV or Excel"}
+          <Button size="sm" disabled={!!busy} onClick={() => ref.current?.click()}>
+            <FileSpreadsheet /> {fileName ? "Choose another file" : "Choose CSV or Excel"}
           </Button>
           {fileName && <span className="truncate text-[0.8125rem] text-mut">{fileName}</span>}
         </div>
-        <p className="text-[0.75rem] text-mut">
-          SC number can also be the trade code. Leave Amount BDT empty to convert Amount USD with the trade exchange rate. Advance is yes or no. Dates as yyyy-mm-dd or dd/mm/yyyy.
-        </p>
+        <ul className="list-disc space-y-0.5 pl-5 text-[0.75rem] text-mut">
+          <li>Columns follow the EXP template: {EXP_FIELDS.filter((f) => f.stage !== "extra").map((f) => f.label).join(", ")}. Flight No and Shipment ID are optional.</li>
+          {create ? (
+            <li>EXP Type is Advance or Duplicate. Advance needs the first 11 fields; Duplicate needs all 23. Lc Contact and Importer fill from the trade when empty.</li>
+          ) : (
+            <li>Put Duplicate in EXP Type to turn an Advance EXP into a Duplicate EXP (all 23 fields must then be filled).</li>
+          )}
+          <li>Amounts in USD. Dates as yyyy-mm-dd, dd/mm/yyyy or 26-Apr-2026. Every row is checked before anything is saved.</li>
+        </ul>
         {rows.length > 0 && (
-          <div className="scroll-thin max-h-[50vh] overflow-auto rounded-lg border border-line">
-            <table className="tbl min-w-[44rem]">
-              <thead><tr>{["Row", "Trade", "Shipment ID", "EXP number", "Date", "Amount", "Check"].map((h) => <th key={h}>{h}</th>)}</tr></thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.n}>
-                    <td className="num text-mut">{r.n}</td>
-                    <td className="code-id">{r.tradeCode ?? r["SC number"]}</td>
-                    <td className="code-id">{r["Shipment ID"] || (r.advance ? <span className="text-mut">Advance</span> : "")}</td>
-                    <td className="code-id">{r["EXP number"]}</td>
-                    <td className="code-id">{r.date}</td>
-                    <td className="num">{r.amount ? money(r.amount) : ""}</td>
-                    <td className="max-w-[16rem]">
-                      {r.result === "ok" ? <Chip label="Created" tone="ok" /> : r.result ? <span className="text-[0.75rem] text-bad">{r.result}</span> : r.errors.length ? <span className="text-[0.75rem] text-bad">{r.errors.join(". ")}</span> : <Chip label="Ready" tone="info" dot={false} />}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <div className="flex flex-wrap gap-2 text-[0.8125rem]">
+              <Chip label={`${rows.length} rows`} tone="gray" dot={false} />
+              <Chip label={`${rows.filter((r) => checks[r.n]?.ok).length} ready`} tone="info" dot={false} />
+              {failing > 0 && <Chip label={`${failing} with problems`} tone="bad" dot={false} />}
+              {Object.values(done).some((r) => r.ok) && <Chip label={`${Object.values(done).filter((r) => r.ok).length} saved`} tone="ok" dot={false} />}
+            </div>
+            <div className="scroll-thin max-h-[50vh] overflow-auto rounded-lg border border-line">
+              <table className="tbl min-w-[48rem]">
+                <thead><tr>{["Row", ...(create ? ["Trade"] : []), "EXP number", "Type", "Amount Inv", "Check"].map((h) => <th key={h}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {rows.map((r) => {
+                    const d = done[r.n], c = checks[r.n];
+                    return (
+                      <tr key={r.n} className={cn(c && !c.ok && "bg-bad/[0.04]")}>
+                        <td className="num text-mut">{r.n}</td>
+                        {create && <td className="code-id">{r.trade_code}</td>}
+                        <td className="code-id">{r.label}</td>
+                        <td>{r.type || (create ? "Advance" : "")}</td>
+                        <td className="num">{r.amount ? money(r.amount) : ""}</td>
+                        <td className="max-w-[24rem]">
+                          {d?.ok ? <Chip label={`${create ? "Created" : "Updated"} ${d.code ?? ""}`} tone="ok" />
+                            : d && !d.ok ? <span className="text-[0.75rem] text-bad">{d.error}</span>
+                            : !c ? <span className="text-[0.75rem] text-mut">Checking</span>
+                            : c.ok ? <Chip label="Ready" tone="info" dot={false} />
+                            : <span className="text-[0.75rem] text-bad">{c.error}</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </Modal>
