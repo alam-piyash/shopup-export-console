@@ -66,7 +66,7 @@ function NavList({ me, onNavigate, collapsed }: { me: Me | null | undefined; onN
         cn(
           "relative flex items-center rounded-lg text-[0.8438rem] transition",
           collapsed ? "mx-auto size-10 justify-center" : "h-9 gap-2.5 px-2.5",
-          isActive ? "bg-raised font-medium text-fg" : "text-fg/75 hover:bg-raised/70 hover:text-fg",
+          isActive ? "bg-accent/10 font-semibold text-fg [&>svg]:text-accent" : "text-fg/80 hover:bg-raised hover:text-fg",
         )
       }
     >
@@ -333,7 +333,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <aside className={cn("sticky top-0 hidden h-screen shrink-0 flex-col gap-5 border-r border-line bg-surface px-3 pb-4 transition-[width] duration-200 lg:flex", collapsed ? "w-[4.25rem]" : "w-[15rem]")}>{sidebar(undefined, collapsed)}</aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-line bg-bg/85 px-3 backdrop-blur-md sm:px-6 lg:px-8">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-line bg-surface/90 px-3 backdrop-blur-md sm:px-6 lg:px-8">
           <button className="btn btn-ghost btn-icon lg:hidden" onClick={() => setOpen(true)} aria-label="Open menu"><Menu /></button>
           <div className="min-w-0 flex-1"><Breadcrumb /></div>
           <button

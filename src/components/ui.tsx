@@ -155,7 +155,7 @@ export function Section({ title, hint, children, right, step, done, active }: { 
     <section className={cn("card animate-in overflow-hidden", active && "border-accent/45 shadow-[inset_0_3px_0_rgb(var(--accent))]")}>
       <div className="head-strip flex items-center justify-between gap-3 border-b border-line px-5 py-3.5">
         <div className="flex items-center gap-2.5">
-          {step !== undefined && <span className={cn("num grid size-6 place-items-center rounded-md text-[0.75rem] font-semibold", done ? "bg-ok text-white" : "bg-accent/15 text-accent")}>{done ? <Check className="size-3.5" /> : step}</span>}
+          {step !== undefined && <span className={cn("num grid size-6 place-items-center rounded-md text-[0.75rem] font-semibold", done ? "bg-accent text-accent-fg" : "bg-accent/10 text-accent")}>{done ? <Check className="size-3.5" /> : step}</span>}
           <div>
             <div className="text-[0.875rem] font-semibold">{title}</div>
             {hint && <div className="text-[0.7812rem] text-mut">{hint}</div>}

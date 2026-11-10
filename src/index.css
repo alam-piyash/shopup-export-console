@@ -2,36 +2,36 @@
 @tailwind components;
 
 :root {
-  /* palette: 1c1c1c, daddd8, ecebe4, eef0f2, fafaff */
-  --bg: 238 240 242;
-  --surface: 250 250 255;
-  --raised: 236 235 228;
-  --line: 218 221 216;
-  --fg: 28 28 28;
-  --mut: 104 106 100;
-  --accent: 28 28 28;
-  --accent-fg: 250 250 255;
+  /* Apple Modern: white #F5F5F7, black #1D1D1F, grey #AAAAAA, blue #007AFF */
+  --bg: 245 245 247;
+  --surface: 255 255 255;
+  --raised: 240 240 243;
+  --line: 227 227 230;
+  --fg: 29 29 31;
+  --mut: 110 110 115;
+  --accent: 0 122 255;
+  --accent-fg: 255 255 255;
   --ok: 21 128 61;
   --warn: 180 83 9;
   --bad: 200 30 30;
-  --info: 29 78 216;
-  --tint: 28 28 28;
+  --info: 0 102 214;
+  --tint: 0 122 255;
   color-scheme: light;
 }
 .dark {
-  --bg: 9 9 11;
-  --surface: 14 14 17;
-  --raised: 26 26 30;
-  --line: 35 35 40;
-  --fg: 250 250 250;
-  --mut: 161 161 170;
-  --accent: 250 250 250;
-  --accent-fg: 9 9 11;
+  --bg: 29 29 31;
+  --surface: 41 41 43;
+  --raised: 50 50 53;
+  --line: 58 58 60;
+  --fg: 245 245 247;
+  --mut: 170 170 170;
+  --accent: 0 122 255;
+  --accent-fg: 255 255 255;
   --ok: 134 239 172;
   --warn: 252 211 77;
   --bad: 252 165 165;
-  --info: 147 197 253;
-  --tint: 220 220 215;
+  --info: 100 170 255;
+  --tint: 0 122 255;
   color-scheme: dark;
 }
 
@@ -50,14 +50,14 @@
 /* components (outside @layer so dynamic class names are never purged) */
   .num { font-variant-numeric: tabular-nums; }
   .code-id { font-variant-numeric: normal; letter-spacing: 0.01em; }
-  .card { @apply rounded-xl border border-line bg-surface shadow-[0_1px_2px_rgb(28_28_28/0.04),0_8px_24px_rgb(28_28_28/0.035)]; }
+  .card { @apply rounded-[14px] border border-line bg-surface; }
   /* tinted header strip for panels, form sections and tables */
-  .head-strip { background: rgb(var(--raised) / 0.75); }
+  .head-strip { background: transparent; }
   .lbl { @apply text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-mut; }
   .h1 { @apply text-[1.625rem] font-semibold tracking-tight leading-tight; }
   .field {
     @apply h-9 w-full rounded-lg border border-line bg-surface px-3 text-[0.875rem] text-fg outline-none transition
-      placeholder:text-mut/70 focus:border-fg/50 focus:ring-2 focus:ring-fg/10 disabled:opacity-60;
+      placeholder:text-mut/70 focus:border-accent focus:ring-[3px] focus:ring-accent/15 disabled:opacity-60;
     background: rgb(var(--surface));
   }
   textarea.field { @apply h-auto py-2; }
@@ -65,7 +65,7 @@
     @apply inline-flex h-9 select-none items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3.5 text-[0.8438rem] font-medium transition
       disabled:pointer-events-none disabled:opacity-45 [&_svg]:size-4 [&_svg]:shrink-0;
   }
-  .btn-primary { @apply bg-accent text-accent-fg hover:opacity-90 active:opacity-100; }
+  .btn-primary { @apply bg-accent font-semibold text-accent-fg hover:brightness-95 active:brightness-90; }
   .btn-outline { @apply border border-line bg-surface text-fg hover:bg-raised; }
   .btn-ghost { @apply text-fg hover:bg-raised; }
   .btn-danger { @apply border border-bad/40 bg-bad/10 text-bad hover:bg-bad/15; }
@@ -79,7 +79,7 @@
   .chip-info { @apply text-info; }
   .chip-gray { @apply text-mut; }
   .tbl { @apply w-full border-collapse text-left; }
-  .tbl th { @apply border-b border-line px-3 py-2 text-left text-[0.75rem] font-semibold text-fg/70; background: rgb(var(--raised)); }
+  .tbl th { @apply border-b border-line px-3 py-2 text-left text-[0.75rem] font-medium text-mut; }
   .tbl td { @apply border-b border-line/70 px-3 py-[0.4375rem] text-left align-middle text-[0.8125rem] whitespace-nowrap; }
   .tbl th { white-space: nowrap; }
   .tbl th:first-child, .tbl td:first-child { padding-left: 1rem; }
@@ -87,11 +87,11 @@
   .tbl .btn { @apply h-[1.625rem] rounded-md px-2.5 text-[0.75rem]; }
   .tbl th:last-child, .tbl td:last-child { padding-right: 1rem; }
   .tbl tbody tr { @apply transition-colors; }
-  .tbl tbody tr:nth-child(even) { background: rgb(var(--bg) / 0.55); }
-  .tbl tbody tr:hover { background: rgb(var(--raised) / 0.7); }
+  .tbl tbody tr:nth-child(even) { background: transparent; }
+  .tbl tbody tr:hover { background: rgb(var(--bg) / 0.7); }
   .tbl tbody tr:last-child td { @apply border-b-0; }
   .sel { @apply flex cursor-pointer items-center gap-3 rounded-lg border border-line bg-bg px-3.5 py-3 transition hover:border-mut/50; }
-  .sel.on { @apply border-ok/50 bg-ok/[0.08] shadow-[inset_3px_0_0_rgb(var(--ok))]; }
+  .sel.on { @apply border-accent/50 bg-accent/[0.08] shadow-[inset_3px_0_0_rgb(var(--accent))]; }
   .need { @apply border-warn/60 bg-warn/[0.06]; }
   .sel input[type="checkbox"] { @apply size-4 accent-[rgb(var(--accent))]; }
   .banner { @apply flex items-start gap-2.5 rounded-xl border border-line bg-raised px-4 py-3 text-[0.8125rem] leading-relaxed; }

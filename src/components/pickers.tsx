@@ -141,7 +141,7 @@ export function ExpMultiPicker({
             <thead className="sticky top-0 z-[1]">
               <tr>
                 <th className="w-10">
-                  <input type="checkbox" checked={allOn} ref={(el) => { if (el) el.indeterminate = someOn; }} onChange={toggleAll} aria-label={allOn ? "Clear all shown" : "Select all shown"} className="size-4 accent-[rgb(var(--ok))]" />
+                  <input type="checkbox" checked={allOn} ref={(el) => { if (el) el.indeterminate = someOn; }} onChange={toggleAll} aria-label={allOn ? "Clear all shown" : "Select all shown"} className="size-4 accent-[rgb(var(--accent))]" />
                 </th>
                 <th>EXP</th>
                 <th>EXP number</th>
@@ -154,9 +154,9 @@ export function ExpMultiPicker({
               {shown.map((e) => {
                 const on = sel.has(e.id);
                 return (
-                  <tr key={e.id} onClick={() => toggle(e.id)} className={cn("cursor-pointer", on && "!bg-ok/[0.08]")}>
-                    <td className={cn("w-10", on && "shadow-[inset_3px_0_0_rgb(var(--ok))]")}>
-                      <input type="checkbox" checked={on} onChange={() => toggle(e.id)} onClick={(ev) => ev.stopPropagation()} aria-label={`Select ${e.code}`} className="size-4 accent-[rgb(var(--ok))]" />
+                  <tr key={e.id} onClick={() => toggle(e.id)} className={cn("cursor-pointer", on && "!bg-accent/[0.08]")}>
+                    <td className={cn("w-10", on && "shadow-[inset_3px_0_0_rgb(var(--accent))]")}>
+                      <input type="checkbox" checked={on} onChange={() => toggle(e.id)} onClick={(ev) => ev.stopPropagation()} aria-label={`Select ${e.code}`} className="size-4 accent-[rgb(var(--accent))]" />
                     </td>
                     <td>
                       <div className="code-id font-medium">{e.code}</div>
@@ -174,7 +174,7 @@ export function ExpMultiPicker({
           </table>
         </div>
         {filtered.length > LIMIT && <p className="border-t border-line px-3 py-2 text-center text-[0.75rem] text-mut">Showing {LIMIT} of {filtered.length}. Search to narrow the list; select all still covers every match.</p>}
-        <div className="flex items-center justify-between gap-2 border-t border-line px-4 py-2 text-[0.8125rem]" style={{ background: "rgb(var(--tint) / 0.05)" }}>
+        <div className="flex items-center justify-between gap-2 border-t border-line px-4 py-2 text-[0.8125rem]" style={{ background: "rgb(var(--bg) / 0.6)" }}>
           <span className="text-mut">{selected.length} of {exps.length} EXPs selected</span>
           <span className="num font-semibold">{money(total)}</span>
         </div>

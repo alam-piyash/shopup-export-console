@@ -36,7 +36,7 @@ function ExpFieldsPanel({ exp, onEdit }: { exp: Exp; onEdit: () => void }) {
       <div className="divide-y divide-line">
         {EXP_GROUPS.map((g) => (
           <div key={g.key} className="grid sm:grid-cols-[8.5rem_minmax(0,1fr)]">
-            <div className="flex items-center px-4 pt-2.5 sm:border-r sm:border-line sm:py-2.5" style={{ background: "rgb(var(--tint) / 0.03)" }}>
+            <div className="flex items-center px-4 pt-2.5 sm:border-r sm:border-line sm:py-2.5" style={{ background: "rgb(var(--bg) / 0.6)" }}>
               <span className="lbl leading-tight">{g.title}</span>
             </div>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 px-4 py-2.5 sm:grid-cols-3 xl:grid-cols-6">
