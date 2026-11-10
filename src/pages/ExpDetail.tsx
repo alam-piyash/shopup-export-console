@@ -11,7 +11,7 @@ import { DocPanel, type DocModel } from "@/components/docs";
 import { EditExpDialog } from "@/components/expDialogs";
 import { CI_DOCS, GenerateCiDialog } from "@/components/ciGenerate";
 import { AmountChangesPanel, ChangeAmountDialog } from "@/components/expAmount";
-import { EXP_FIELDS, EXP_GROUPS, expNumber, fieldValue, isRequired, isShipped, typeLabel } from "@/lib/expFields";
+import { EXP_FIELDS, EXP_GROUPS, expNumber, fieldValue, isShipped, typeLabel } from "@/lib/expFields";
 
 function ExpFieldsPanel({ exp, onEdit }: { exp: Exp; onEdit: () => void }) {
   const dup = exp.type === "regular";
@@ -23,29 +23,31 @@ function ExpFieldsPanel({ exp, onEdit }: { exp: Exp; onEdit: () => void }) {
     if (key === "gross_weight") return `${v} kg`;
     return v;
   };
+  const filled = EXP_FIELDS.filter((f) => fieldValue(exp, f.key)).length;
   return (
     <section className="card overflow-hidden">
-      <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5">
-        <div>
+      <div className="head-strip flex items-center justify-between gap-3 border-b border-line px-4 py-2.5">
+        <div className="flex items-baseline gap-2.5">
           <h2 className="text-[0.9375rem] font-semibold">EXP details</h2>
-          <p className="text-[0.75rem] text-mut">Locked fields cannot change once saved.</p>
+          <span className="num text-[0.75rem] text-mut">{filled}/{EXP_FIELDS.length} filled</span>
         </div>
         <Button size="sm" variant="outline" onClick={onEdit}><Pencil /> Edit</Button>
       </div>
-      <div className="flex flex-col divide-y divide-line">
+      <div className="divide-y divide-line">
         {EXP_GROUPS.map((g) => (
-          <div key={g.key} className="px-5 py-4">
-            <div className="lbl mb-2.5">{g.title}</div>
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
+          <div key={g.key} className="grid sm:grid-cols-[8.5rem_minmax(0,1fr)]">
+            <div className="flex items-center px-4 pt-2.5 sm:border-r sm:border-line sm:py-2.5" style={{ background: "rgb(var(--tint) / 0.03)" }}>
+              <span className="lbl leading-tight">{g.title}</span>
+            </div>
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 px-4 py-2.5 sm:grid-cols-3 xl:grid-cols-4">
               {EXP_FIELDS.filter((f) => f.group === g.key).map((f) => {
                 const v = show(f.key, f.kind);
-                const needed = isRequired(f, true);
                 const due = !v && (f.stage === "advance" || (dup && f.stage === "regular"));
                 return (
                   <div key={f.key} className="min-w-0">
-                    <dt className="flex items-center gap-1 text-[0.7188rem] text-mut">{f.label}{f.locked && v && <Lock className="size-3" aria-label="Locked" />}</dt>
-                    <dd className={cn("truncate text-[0.8125rem]", !v && "text-mut", due && "text-warn")} title={v ?? undefined}>
-                      {v ?? (due ? "Missing" : needed ? "For Regular" : "Not set")}
+                    <dt className="flex items-center gap-1 text-[0.6875rem] leading-4 text-mut">{f.label}{f.locked && v && <Lock className="size-2.5" aria-label="Locked" />}</dt>
+                    <dd className={cn("truncate text-[0.8125rem] font-medium leading-5", !v && "font-normal text-mut/70", due && "text-warn")} title={v ?? undefined}>
+                      {v ?? (due ? "Missing" : "Not set")}
                     </dd>
                   </div>
                 );
@@ -54,6 +56,7 @@ function ExpFieldsPanel({ exp, onEdit }: { exp: Exp; onEdit: () => void }) {
           </div>
         ))}
       </div>
+      <div className="flex items-center gap-1.5 border-t border-line px-4 py-2 text-[0.7188rem] text-mut"><Lock className="size-3" /> Locked fields cannot change once saved.</div>
     </section>
   );
 }

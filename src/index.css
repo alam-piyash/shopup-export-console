@@ -14,6 +14,7 @@
   --warn: 180 83 9;
   --bad: 200 30 30;
   --info: 29 78 216;
+  --tint: 30 58 110;
   color-scheme: light;
 }
 .dark {
@@ -29,6 +30,7 @@
   --warn: 252 211 77;
   --bad: 252 165 165;
   --info: 147 197 253;
+  --tint: 120 160 230;
   color-scheme: dark;
 }
 
@@ -48,11 +50,14 @@
   .num { font-variant-numeric: tabular-nums; }
   .code-id { font-variant-numeric: normal; letter-spacing: 0.01em; }
   .card { @apply rounded-xl border border-line bg-surface; }
+  /* tinted header strip for panels, form sections and tables */
+  .head-strip { background: rgb(var(--tint) / 0.055); }
   .lbl { @apply text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-mut; }
   .h1 { @apply text-[1.625rem] font-semibold tracking-tight leading-tight; }
   .field {
     @apply h-9 w-full rounded-lg border border-line bg-surface px-3 text-[0.875rem] text-fg outline-none transition
-      placeholder:text-mut/70 focus:border-mut focus:ring-2 focus:ring-fg/10 disabled:opacity-60;
+      placeholder:text-mut/70 focus:border-[rgb(var(--tint))] focus:ring-2 focus:ring-[rgb(var(--tint)/0.15)] disabled:opacity-60;
+    background: rgb(var(--tint) / 0.025);
   }
   textarea.field { @apply h-auto py-2; }
   .btn {
@@ -73,7 +78,7 @@
   .chip-info { @apply text-info; }
   .chip-gray { @apply text-mut; }
   .tbl { @apply w-full border-collapse text-left; }
-  .tbl th { @apply border-b border-line bg-raised/50 px-3 py-2 text-left text-[0.75rem] font-medium text-mut; }
+  .tbl th { @apply border-b border-line px-3 py-2 text-left text-[0.75rem] font-semibold text-fg/70; background: rgb(var(--tint) / 0.07); }
   .tbl td { @apply border-b border-line/70 px-3 py-[0.4375rem] text-left align-middle text-[0.8125rem] whitespace-nowrap; }
   .tbl th { white-space: nowrap; }
   .tbl th:first-child, .tbl td:first-child { padding-left: 1rem; }
@@ -81,7 +86,8 @@
   .tbl .btn { @apply h-[1.625rem] rounded-md px-2.5 text-[0.75rem]; }
   .tbl th:last-child, .tbl td:last-child { padding-right: 1rem; }
   .tbl tbody tr { @apply transition-colors; }
-  .tbl tbody tr:hover { @apply bg-raised/70; }
+  .tbl tbody tr:nth-child(even) { background: rgb(var(--tint) / 0.022); }
+  .tbl tbody tr:hover { background: rgb(var(--tint) / 0.06); }
   .tbl tbody tr:last-child td { @apply border-b-0; }
   .sel { @apply flex cursor-pointer items-center gap-3 rounded-lg border border-line bg-bg px-3.5 py-3 transition hover:border-mut/50; }
   .sel.on { @apply border-ok/50 bg-ok/[0.08] shadow-[inset_3px_0_0_rgb(var(--ok))]; }

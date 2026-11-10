@@ -5,11 +5,10 @@ import { Send, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { COLLECTION_DOCS, COLLECTION_REQUIRED, rpc, selectAll, useRefresh } from "@/lib/api";
-import { money, cents, errMsg } from "@/lib/format";
+import { money, cents, errMsg, pct } from "@/lib/format";
 import type { Exp, UploadedFile } from "@/lib/types";
-import { Button, Chip, Field, Grid, Input, PageHeader, Row, Section, cn } from "@/components/ui";
+import { Button, Chip, Field, Grid, Input, PageHeader, Progress, Row, Section, cn } from "@/components/ui";
 import { ExpMultiPicker, TradePicker } from "@/components/pickers";
-import { expNumber } from "@/lib/expFields";
 import { FileField } from "@/components/files";
 
 export default function CollectionNew() {
@@ -43,7 +42,6 @@ export default function CollectionNew() {
   const sum = (exps ?? []).filter((e) => selected.includes(e.id)).reduce((s, e) => s + Number(e.amount), 0);
   const diff = received - sum;
   const matches = received > 0 && selected.length > 0 && cents(sum) === cents(received);
-  const docsDone = COLLECTION_DOCS.filter((d) => docs[d]).length;
   const pendingDocs = COLLECTION_DOCS.filter((d) => !docs[d] && !COLLECTION_REQUIRED.includes(d));
   const valid = matches && COLLECTION_REQUIRED.every((d) => docs[d]) && !!tradeId;
 
@@ -90,7 +88,7 @@ export default function CollectionNew() {
       <PageHeader title="New collection" sub="Pick a trade, enter the amount received, then tick the EXPs it covers. The totals must match exactly." />
       <div className="grid items-start gap-6 lg:grid-cols-[1fr_340px]">
         <div className="flex min-w-0 flex-col gap-5">
-          <Section step={1} title="Trade and amount received">
+          <Section step={1} title="Trade and amount received" done={!!tradeId && received > 0} active={!tradeId || !(received > 0)}>
             <Field label="Trade" required>
               <TradePicker trades={trades ?? []} value={tradeId} onChange={(id) => { setTradeId(id); setSelected([]); }} />
             </Field>
@@ -105,6 +103,8 @@ export default function CollectionNew() {
           </Section>
           <Section
             step={2}
+            done={matches}
+            active={!!tradeId && received > 0 && !matches}
             title="EXPs in this collection"
             hint="Only EXPs not already in a pending or approved collection are shown."
             right={tradeId && received > 0 && (exps?.length ?? 0) > 0 ? <Button size="sm" variant="outline" onClick={autoMatch}><Wand2 /> Auto match</Button> : undefined}
@@ -114,11 +114,10 @@ export default function CollectionNew() {
                 exps={exps}
                 selected={selected}
                 onChange={setSelected}
-                meta={(e) => [expNumber(e) && `EXP ${expNumber(e)}`, e.invoice_no && `Inv ${e.invoice_no}`, e.awb_no && `AWB ${e.awb_no}`, e.status === "closed" ? "Closed" : "Open"].filter(Boolean).join(" · ")}
-              />
+                              />
             )}
           </Section>
-          <Section step={3} title="Documents" hint="The Swift Message is required now. Swift Copy, PRC and TT Voucher can be added later from the collection page.">
+          <Section step={3} done={!!docs["Swift Message"]} active={matches && !docs["Swift Message"]} title="Documents" hint="The Swift Message is required now. Swift Copy, PRC and TT Voucher can be added later from the collection page.">
             <div className="flex flex-col gap-2">
               {COLLECTION_DOCS.map((d) => {
                 const req = COLLECTION_REQUIRED.includes(d);
@@ -128,15 +127,28 @@ export default function CollectionNew() {
           </Section>
         </div>
         <aside className="flex flex-col gap-3 lg:sticky lg:top-20">
-          <div className="card p-5">
-            <div className="lbl mb-2">Match check</div>
-            <Row label="Amount received" value={<span className="num">{money(received)}</span>} />
-            <Row label={`Selected EXPs (${selected.length})`} value={<span className="num">{money(sum)}</span>} />
-            <Row label="Documents" value={<span className="num">{docsDone} attached{pendingDocs.length ? `, ${pendingDocs.length} pending` : ""}</span>} />
-            <div className="my-3 border-t border-line" />
-            <div className="lbl">Difference</div>
-            <div className={cn("num mt-1 text-[1.75rem] font-semibold", matches ? "text-ok" : received ? "text-bad" : "text-mut")}>{money(diff)}</div>
-            <div className="mt-2">{matches ? <Chip label="Totals match" tone="ok" /> : <Chip label="Totals must match exactly" tone="warn" />}</div>
+          <div className="card overflow-hidden">
+            <div className="head-strip border-b border-line px-5 py-3 text-[0.875rem] font-semibold">Match check</div>
+            <div className="px-5 py-3">
+              <Row label="Amount received" value={<span className="num font-medium">{received ? money(received) : <span className="text-mut">Not entered</span>}</span>} />
+              <Row label={`Selected EXPs (${selected.length})`} value={<span className="num font-medium">{money(sum)}</span>} />
+              {received > 0 && <Progress value={pct(sum, received)} tone={matches ? "ok" : diff < 0 ? "bad" : "accent"} className="my-2" />}
+              <Row label="Swift Message" value={docs["Swift Message"] ? <Chip label="Attached" tone="ok" dot={false} /> : <Chip label="Required" tone="warn" dot={false} />} />
+              {pendingDocs.length > 0 && <Row label="Can be added later" value={<span className="text-mut">{pendingDocs.join(", ")}</span>} />}
+            </div>
+            <div className={cn("border-t px-5 py-4", matches ? "border-ok/30 bg-ok/[0.07]" : received && selected.length ? (diff < 0 ? "border-bad/25 bg-bad/[0.05]" : "border-warn/30 bg-warn/[0.06]") : "border-line bg-bg")}>
+              {!received ? (
+                <p className="text-[0.8125rem] text-mut">Enter the amount received, then tick the EXPs it pays for.</p>
+              ) : !selected.length ? (
+                <><div className="lbl">To match</div><div className="num mt-1 text-[1.5rem] font-semibold">{money(received)}</div><p className="mt-1 text-[0.75rem] text-mut">Tick EXPs that add up to this amount, or use Auto match.</p></>
+              ) : matches ? (
+                <><div className="lbl text-ok">Totals match</div><div className="num mt-1 text-[1.5rem] font-semibold text-ok">{money(sum)}</div><p className="mt-1 text-[0.75rem] text-mut">Ready to submit once the Swift Message is attached.</p></>
+              ) : diff > 0 ? (
+                <><div className="lbl">Still to match</div><div className="num mt-1 text-[1.5rem] font-semibold text-warn">{money(diff)}</div><p className="mt-1 text-[0.75rem] text-mut">Tick more EXPs. Totals must match exactly.</p></>
+              ) : (
+                <><div className="lbl">Over by</div><div className="num mt-1 text-[1.5rem] font-semibold text-bad">{money(-diff)}</div><p className="mt-1 text-[0.75rem] text-mut">Untick an EXP. Totals must match exactly.</p></>
+              )}
+            </div>
           </div>
           <Button className="h-11 w-full" disabled={!valid} loading={busy} onClick={submit}>{!busy && <Send />} Submit for approval</Button>
           <p className="text-center text-[0.75rem] text-mut">An admin approves before EXPs count as collected.</p>

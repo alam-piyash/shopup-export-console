@@ -1,17 +1,14 @@
 import { useState, type ReactNode } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, FilePen, FileText, Lock, Pencil, Undo2 } from "lucide-react";
+import { ChevronRight, FilePen, Lock, Undo2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { EXP_DOCS, actionLabel, actionTone, useActivity, useIsAdmin, useMe, useProfiles, useTrade, useTradeActions } from "@/lib/api";
+import { actionLabel, actionTone, useActivity, useIsAdmin, useMe, useProfiles, useTrade, useTradeActions } from "@/lib/api";
 import { money, moneyShort, daysUntil, errMsg, fmtDate, fmtDateTime, pct, usd } from "@/lib/format";
 import type { Amendment, Attachment, Exp, TradeItem } from "@/lib/types";
-import { ApproveReject, Button, Chip, Confirm, Empty, Kpi, KpiGrid, LoadingRows, Money, Panel, Progress, Row, Segments, Tabs, cn } from "@/components/ui";
+import { ApproveReject, Button, Chip, Confirm, Empty, Kpi, KpiGrid, LoadingRows, Money, Panel, Progress, Row, Tabs, cn } from "@/components/ui";
 import { EntityDocList } from "@/components/entityDocs";
-import { EditExpDialog } from "@/components/expDialogs";
 import { ContractVersions, FollowupsPanel } from "@/components/contractPanel";
-import { SearchBox, expMatches } from "@/components/pickers";
-import { expNumber, typeLabel } from "@/lib/expFields";
 
 type Tab = "exps" | "contract" | "amendments" | "activity";
 
@@ -42,7 +39,6 @@ export default function TradeDetail() {
   const extra = useContractExtra(tradeId);
   const isAdmin = useIsAdmin();
   const actions = useTradeActions();
-  const [editExp, setEditExp] = useState<Exp | null>(null);
   const [closing, setClosing] = useState(false);
 
   if (isLoading) return <LoadingRows rows={6} />;
@@ -118,8 +114,7 @@ export default function TradeDetail() {
         <div className="mt-5">
           {tab === "exps" && (
             <div className="flex flex-col gap-5">
-              {exps.length > 0 && <ExpSummary exps={exps} contract={contract} />}
-              <ExpList exps={exps} active={t.status === "active" && !needsSigned} tradeId={tradeId} onEdit={setEditExp} />
+              <ExpSummary exps={exps} contract={contract} tradeId={tradeId} active={t.status === "active" && !needsSigned} />
               {(t.status === "active" || t.status === "revision_pending") && <FollowupsPanel trade={t} exps={exps} />}
             </div>
           )}
@@ -129,14 +124,13 @@ export default function TradeDetail() {
         </div>
       </div>
 
-      {editExp && <EditExpDialog exp={editExp} available={available} onClose={() => setEditExp(null)} />}
       <Confirm open={closing} onOpenChange={setClosing} title={`Close ${t.code}?`} body="All EXPs are closed. Closing the trade marks the contract as complete. Collections and incentives on its EXPs still work." confirmLabel="Close trade" onConfirm={() => actions.closeTrade(t.id)} />
     </>
   );
 }
 
 /** Topline of the trade's EXPs: issued, value, Advance and Regular, collected. */
-function ExpSummary({ exps, contract }: { exps: Exp[]; contract: number }) {
+function ExpSummary({ exps, contract, tradeId, active }: { exps: Exp[]; contract: number; tradeId: string; active: boolean }) {
   const sum = (a: Exp[]) => a.reduce((s, e) => s + Number(e.amount || 0), 0);
   const adv = exps.filter((e) => e.type === "advance"), reg = exps.filter((e) => e.type === "regular");
   const col = exps.filter((e) => e.collection_status === "approved"), pend = exps.filter((e) => e.collection_status === "pending_approval");
@@ -149,82 +143,22 @@ function ExpSummary({ exps, contract }: { exps: Exp[]; contract: number }) {
     </div>
   );
   return (
-    <section className="card grid grid-cols-2 divide-line max-lg:[&>*:nth-child(n+3)]:border-t max-lg:[&>*:nth-child(even)]:border-l lg:grid-cols-5 lg:divide-x">
+    <section className="card overflow-hidden">
+      <div className="head-strip flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
+        <div>
+          <div className="text-[0.9375rem] font-semibold">EXP summary</div>
+          <div className="text-[0.75rem] text-mut">{exps.length ? "EXPs are added, corrected and searched on the EXPs page." : active ? "No EXPs yet. Add them on the EXPs page, one by one or from Excel." : "EXPs can be added once the trade is approved and the signed contract is on file."}</div>
+        </div>
+        {(exps.length > 0 || active) && <Link to={`/exps?trade=${tradeId}`} className="btn btn-outline btn-sm">{exps.length ? `View ${exps.length} EXP${exps.length === 1 ? "" : "s"}` : "Go to EXPs"} <ChevronRight /></Link>}
+      </div>
+      <div className="grid grid-cols-2 divide-line max-lg:[&>*:nth-child(n+3)]:border-t max-lg:[&>*:nth-child(even)]:border-l lg:grid-cols-5 lg:divide-x">
       {cell("EXPs issued", exps.length, `${exps.filter((e) => e.status === "open").length} open`)}
-      {cell("EXP value", money(total), `${pct(total, contract)}% of contract`)}
+      {cell("EXP value", money(total), `${contract ? pct(total, contract) : 0}% of contract`)}
       {cell("Advance", adv.length, money(sum(adv)))}
       {cell("Regular", reg.length, money(sum(reg)))}
       {cell("Collected", <span className="text-ok">{money(sum(col))}</span>, `${col.length} of ${exps.length} EXPs${pend.length ? `, ${pend.length} pending approval` : ""} · due ${money(total - sum(col))}`)}
+      </div>
     </section>
-  );
-}
-
-function ExpList({ exps: all, active, tradeId, onEdit }: { exps: Exp[]; active: boolean; tradeId: string; onEdit: (e: Exp) => void }) {
-  const [q, setQ] = useState("");
-  const [kind, setKind] = useState<"all" | "advance" | "regular" | "uncollected">("all");
-  const [limit, setLimit] = useState(50);
-  const exps = all.filter((e) => expMatches(e, q) && (kind === "all" || (kind === "uncollected" ? !e.collection_status : e.type === kind)));
-  const head = all.length > 5 && (
-    <div className="flex flex-wrap items-center gap-2">
-      <SearchBox value={q} onChange={(v) => { setQ(v); setLimit(50); }} placeholder={`Search ${all.length} EXPs: code, EXP number, AWB, invoice`} className="min-w-[14rem] flex-1" />
-      <Segments
-        value={kind}
-        onChange={setKind}
-        options={[
-          { value: "all", label: "All", count: all.length },
-          { value: "advance", label: "Advance", count: all.filter((e) => e.type === "advance").length },
-          { value: "regular", label: "Regular", count: all.filter((e) => e.type === "regular").length },
-          { value: "uncollected", label: "Uncollected", count: all.filter((e) => !e.collection_status).length },
-        ]}
-      />
-    </div>
-  );
-  if (!all.length)
-    return (
-      <Panel>
-        <Empty
-          icon={<FileText />}
-          title="No EXPs yet"
-          body={active ? "EXPs are added from the EXPs page, one by one or many at once from an Excel file." : "EXPs can be added once the trade is active."}
-          action={active && <Link to={`/exps?trade=${tradeId}`} className="btn btn-outline">Go to EXPs <ChevronRight /></Link>}
-        />
-      </Panel>
-    );
-  return (
-    <div className="flex flex-col gap-2.5">
-      {head}
-      {exps.length === 0 && <p className="py-6 text-center text-[0.8125rem] text-mut">No EXPs match</p>}
-      {exps.slice(0, limit).map((e) => (
-        <div key={e.id} className="card flex flex-col gap-4 p-4 transition hover:border-mut/40 md:flex-row md:items-center">
-          <Link to={`/exps/${e.id}`} className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="code-id font-semibold">{e.code}</span>
-              <Chip status={e.status} />
-              <Chip label={typeLabel(e.type)} tone={e.type === "advance" ? "info" : "gray"} dot={false} />
-              {e.collection_status && <Chip label={e.collection_status === "approved" ? "Collected" : "Collection pending"} tone={e.collection_status === "approved" ? "ok" : "warn"} />}
-              {e.incentive_status && <Chip label={e.incentive_status === "approved" ? "Incentive approved" : "Incentive pending"} tone={e.incentive_status === "approved" ? "ok" : "warn"} dot={false} />}
-            </div>
-            <div className="mt-1 text-[0.7812rem] text-mut">
-              {expNumber(e) ? `EXP ${expNumber(e)}` : "EXP number not set"}{e.awb_no ? ` · AWB ${e.awb_no}` : ""}{e.shipment_date ? ` · Shipped ${fmtDate(e.shipment_date)}` : ""}{e.fields_missing ? ` · ${e.fields_missing} fields missing` : ""}
-            </div>
-          </Link>
-          <div className="w-full md:w-44">
-            <div className="mb-1.5 flex justify-between text-[0.75rem] text-mut"><span>Documents final</span><span className="num">{e.docs_final}/{e.docs_total ?? EXP_DOCS.length}</span></div>
-            <Progress value={(e.docs_final / (e.docs_total ?? EXP_DOCS.length)) * 100} tone={e.docs_final === (e.docs_total ?? EXP_DOCS.length) ? "ok" : "accent"} />
-          </div>
-          <div className="md:w-40 md:text-right">
-            <Money money={e.amount} usd={e.amount_usd} className="font-semibold md:items-end" />
-            {e.issued_amount !== undefined && Number(e.issued_amount) !== Number(e.amount) && <div className="num text-[0.7188rem] text-mut">Issued {money(e.issued_amount)}</div>}
-            {e.pending_amount_change_id && <div className="text-[0.7188rem] text-info">Change pending</div>}
-          </div>
-          <div className="flex gap-1.5">
-            <Button size="sm" variant="outline" onClick={() => onEdit(e)}><Pencil /> Edit</Button>
-            <Link to={`/exps/${e.id}`} className="btn btn-outline btn-sm">Documents <ChevronRight /></Link>
-          </div>
-        </div>
-      ))}
-      {exps.length > limit && <Button variant="outline" className="self-center" onClick={() => setLimit((l) => l + 50)}>Show {Math.min(50, exps.length - limit)} more of {exps.length}</Button>}
-    </div>
   );
 }
 

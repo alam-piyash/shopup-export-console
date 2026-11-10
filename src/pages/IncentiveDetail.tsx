@@ -1,6 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import { useDecide, useIncentives, useIsAdmin, useProfiles } from "@/lib/api";
-import { money, moneyShort, fmtDate } from "@/lib/format";
+import { money, fmtDate } from "@/lib/format";
 import { ApproveReject, Chip, Empty, Kpi, KpiGrid, LoadingRows, Money, Panel, Row } from "@/components/ui";
 import { EntityDocPanel } from "@/components/entityDocs";
 
@@ -34,13 +34,13 @@ export default function IncentiveDetail() {
       {pending && !isAdmin && <div className="banner chip-warn">Waiting for an admin to approve.</div>}
 
       <KpiGrid cols={4}>
-        <Kpi label="Incentive" value={moneyShort(r.incentive_amount)} sub={<span className="num">{money(r.incentive_amount)}</span>} />
-        <Kpi label="FOB" value={moneyShort(r.fob)} sub={`at ${Number(r.incentive_pct)}%`} />
-        <Kpi label="EXPs claimed" value={r.incentive_exps.length} sub={moneyShort(r.exp_amount)} />
+        <Kpi label="Incentive" value={money(r.incentive_amount)} sub={`${Number(r.incentive_pct)}% of FOB`} />
+        <Kpi label="FOB" value={money(r.fob)} sub="Net proceed minus freight" />
+        <Kpi label="EXPs claimed" value={r.incentive_exps.length} sub={`${money(r.exp_amount)} EXP amount`} />
         <Kpi label="Submitted" value={fmtDate(r.created_at)} sub={r.is_demo ? "Demo" : profiles[r.created_by] ?? ""} />
       </KpiGrid>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
         <div className="flex flex-col gap-5">
           <Panel title="Calculation">
             <div className="px-4 py-2">

@@ -115,7 +115,7 @@ export default function IncentiveNew() {
                 exps={exps}
                 selected={selected}
                 onChange={setSelected}
-                meta={(e) => [`SC ${e.sales_contract_no ?? e.trade_code}`, e.collection_code, expNumber(e) && `EXP ${expNumber(e)}`].filter(Boolean).join(" · ")}
+                meta={(e) => [`SC ${e.sales_contract_no ?? e.trade_code}`, e.collection_code].filter(Boolean).join(" · ")}
               />
             )}
           </Section>

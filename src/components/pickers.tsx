@@ -94,7 +94,7 @@ export const expMatches = (e: Partial<Exp>, q: string) => {
 
 const LIMIT = 300;
 
-/** Searchable multi-select for EXPs with select all (filtered) and a running total. */
+/** Searchable multi-select for EXPs: a compact table with select all (filtered) and a running total. */
 export function ExpMultiPicker({
   exps,
   selected,
@@ -105,58 +105,79 @@ export function ExpMultiPicker({
   exps: Exp[];
   selected: string[];
   onChange: (ids: string[]) => void;
+  /** Optional extra line under the EXP code (for example the trade). */
   meta?: (e: Exp) => ReactNode;
   empty?: string;
 }) {
   const [q, setQ] = useState("");
-  const [onlySelected, setOnlySelected] = useState(false);
-  const filtered = useMemo(() => exps.filter((e) => expMatches(e, q) && (!onlySelected || selected.includes(e.id))), [exps, q, onlySelected, selected]);
-  const shown = filtered.slice(0, LIMIT);
+  const [view, setView] = useState<"all" | "selected">("all");
   const sel = new Set(selected);
+  const filtered = useMemo(() => exps.filter((e) => expMatches(e, q) && (view === "all" || sel.has(e.id))), [exps, q, view, selected]); // eslint-disable-line react-hooks/exhaustive-deps
+  const shown = filtered.slice(0, LIMIT);
   const allOn = filtered.length > 0 && filtered.every((e) => sel.has(e.id));
+  const someOn = !allOn && filtered.some((e) => sel.has(e.id));
   const total = exps.filter((e) => sel.has(e.id)).reduce((s, e) => s + Number(e.amount || 0), 0);
   const toggleAll = () => {
     if (allOn) onChange(selected.filter((id) => !filtered.some((e) => e.id === id)));
     else onChange([...new Set([...selected, ...filtered.map((e) => e.id)])]);
   };
+  const toggle = (id: string) => onChange(sel.has(id) ? selected.filter((x) => x !== id) : [...selected, id]);
   if (!exps.length) return <p className="text-mut">{empty}</p>;
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2.5">
       <div className="flex flex-wrap items-center gap-2">
         <SearchBox value={q} onChange={setQ} placeholder="Search EXP code, EXP number, AWB, invoice" className="min-w-[14rem] flex-1" />
-        <button type="button" onClick={() => setOnlySelected((v) => !v)} className={cn("btn btn-sm", onlySelected ? "btn-primary" : "btn-outline")}>
-          Selected {selected.length}
-        </button>
+        <div className="flex gap-0.5 rounded-lg border border-line bg-surface p-[3px] text-[0.8125rem]">
+          {(["all", "selected"] as const).map((v) => (
+            <button key={v} type="button" onClick={() => setView(v)} className={cn("rounded-md px-2.5 py-1 transition", view === v ? "bg-raised font-medium" : "text-mut hover:text-fg")}>
+              {v === "all" ? "All" : "Selected"} <span className="num text-mut">{v === "all" ? exps.length : selected.length}</span>
+            </button>
+          ))}
+        </div>
       </div>
-      <div className="flex items-center justify-between gap-2 rounded-lg bg-raised/60 px-3 py-2 text-[0.8125rem]">
-        <label className="flex cursor-pointer items-center gap-2">
-          <input type="checkbox" checked={allOn} onChange={toggleAll} />
-          {allOn ? "Clear" : "Select"} all {q || onlySelected ? "matching" : ""} ({filtered.length})
-        </label>
-        <span className="text-mut">
-          {selected.length} selected · <span className="num font-medium text-fg">{money(total)}</span>
-        </span>
-      </div>
-      <div className="scroll-thin flex max-h-[26rem] flex-col gap-1.5 overflow-y-auto pr-1">
-        {shown.map((e) => {
-          const on = sel.has(e.id);
-          return (
-            <label key={e.id} className={cn("sel", on && "on")}>
-              <input type="checkbox" checked={on} onChange={(ev) => onChange(ev.target.checked ? [...selected, e.id] : selected.filter((x) => x !== e.id))} />
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-x-2">
-                  <span className="code-id font-medium">{e.code}</span>
-                  {expNumber(e) && <span className="code-id text-[0.75rem] text-mut">EXP {expNumber(e)}</span>}
-                  <span className="text-[0.7188rem] text-mut">{typeLabel(e.type)}</span>
-                </div>
-                <div className="truncate text-[0.75rem] text-mut">{meta ? meta(e) : [e.awb_no && `AWB ${e.awb_no}`, e.invoice_no && `Inv ${e.invoice_no}`].filter(Boolean).join(" · ") || "No shipment details yet"}</div>
-              </div>
-              <span className="num min-w-[7.5rem] text-right font-semibold">{money(e.amount)}</span>
-            </label>
-          );
-        })}
-        {filtered.length > LIMIT && <p className="px-3 py-2 text-center text-[0.75rem] text-mut">Showing {LIMIT} of {filtered.length}. Search to narrow the list; select all still covers every match.</p>}
-        {filtered.length === 0 && <p className="px-3 py-4 text-center text-[0.8125rem] text-mut">No EXPs match</p>}
+      <div className="overflow-hidden rounded-lg border border-line">
+        <div className="scroll-thin max-h-[26rem] overflow-y-auto">
+          <table className="tbl">
+            <thead className="sticky top-0 z-[1]">
+              <tr>
+                <th className="w-10">
+                  <input type="checkbox" checked={allOn} ref={(el) => { if (el) el.indeterminate = someOn; }} onChange={toggleAll} aria-label={allOn ? "Clear all shown" : "Select all shown"} className="size-4 accent-[rgb(var(--ok))]" />
+                </th>
+                <th>EXP</th>
+                <th>EXP number</th>
+                <th className="max-md:hidden">Invoice</th>
+                <th className="max-md:hidden">AWB</th>
+                <th className="text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {shown.map((e) => {
+                const on = sel.has(e.id);
+                return (
+                  <tr key={e.id} onClick={() => toggle(e.id)} className={cn("cursor-pointer", on && "!bg-ok/[0.08]")}>
+                    <td className={cn("w-10", on && "shadow-[inset_3px_0_0_rgb(var(--ok))]")}>
+                      <input type="checkbox" checked={on} onChange={() => toggle(e.id)} onClick={(ev) => ev.stopPropagation()} aria-label={`Select ${e.code}`} className="size-4 accent-[rgb(var(--ok))]" />
+                    </td>
+                    <td>
+                      <div className="code-id font-medium">{e.code}</div>
+                      {meta && <div className="text-[0.7188rem] text-mut">{meta(e)}</div>}
+                    </td>
+                    <td className="code-id">{expNumber(e) || <span className="text-mut">Not set</span>}</td>
+                    <td className="code-id max-md:hidden">{e.invoice_no || <span className="text-mut">Not set</span>}</td>
+                    <td className="code-id max-md:hidden">{e.awb_no || <span className="text-mut">Not set</span>}</td>
+                    <td className="num text-right font-medium">{money(e.amount)}</td>
+                  </tr>
+                );
+              })}
+              {filtered.length === 0 && <tr><td colSpan={6} className="py-5 text-center text-mut">{view === "selected" ? "Nothing selected yet" : "No EXPs match"}</td></tr>}
+            </tbody>
+          </table>
+        </div>
+        {filtered.length > LIMIT && <p className="border-t border-line px-3 py-2 text-center text-[0.75rem] text-mut">Showing {LIMIT} of {filtered.length}. Search to narrow the list; select all still covers every match.</p>}
+        <div className="flex items-center justify-between gap-2 border-t border-line px-4 py-2 text-[0.8125rem]" style={{ background: "rgb(var(--tint) / 0.05)" }}>
+          <span className="text-mut">{selected.length} of {exps.length} EXPs selected</span>
+          <span className="num font-semibold">{money(total)}</span>
+        </div>
       </div>
     </div>
   );

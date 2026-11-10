@@ -1,7 +1,9 @@
 import { Link, useParams } from "react-router-dom";
-import { useCollections, useDecide, useIsAdmin, useProfiles } from "@/lib/api";
-import { money, moneyShort, fmtDate } from "@/lib/format";
-import { ApproveReject, Chip, Empty, Kpi, KpiGrid, LoadingRows, Money, Panel, Row } from "@/components/ui";
+import { ExternalLink, FileText } from "lucide-react";
+import { openFile, useCollections, useDecide, useIsAdmin, useProfiles } from "@/lib/api";
+import { useEntityDocs } from "@/lib/documents";
+import { money, fmtDate, fmtDateTime } from "@/lib/format";
+import { ApproveReject, Button, Chip, Empty, Kpi, KpiGrid, LoadingRows, Money, Panel, Row } from "@/components/ui";
 import { EntityDocPanel } from "@/components/entityDocs";
 
 export default function CollectionDetail() {
@@ -33,13 +35,14 @@ export default function CollectionDetail() {
       {pending && !isAdmin && <div className="banner chip-warn">Waiting for an admin to approve. The EXPs count as collected only after approval.</div>}
 
       <KpiGrid cols={3}>
-        <Kpi label="Amount received" value={moneyShort(c.amount)} usdValue={c.amount_usd} sub={<span className="num">{money(c.amount)}</span>} />
+        <Kpi label="Amount received" value={money(c.amount)} sub={c.bank_reference || "USD"} />
         <Kpi label="EXPs covered" value={c.collection_exps.length} sub={c.collection_exps.map((x) => x.exps?.code).join(", ")} />
         <Kpi label="Submitted" value={fmtDate(c.created_at)} sub={c.is_demo ? "Demo" : profiles[c.created_by] ?? ""} />
       </KpiGrid>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
         <div className="flex flex-col gap-5">
+          <SwiftMessage collectionId={c.id} />
           <Panel title="Details">
             <div className="px-4 py-2">
               <Row label="Amount received" value={<Money money={c.amount} usd={c.amount_usd} align="end" />} />
@@ -67,5 +70,29 @@ export default function CollectionDetail() {
         <EntityDocPanel entityType="collection" entityId={c.id} folder="collections" hint="Add a new version each time a copy comes back. Mark final when the bank file is complete." />
       </div>
     </>
+  );
+}
+
+/** The file submitted with the collection: its Swift Message. */
+function SwiftMessage({ collectionId }: { collectionId: string }) {
+  const { data } = useEntityDocs("collection", [collectionId]);
+  const doc = data?.find((d) => d.entity_id === collectionId && d.doc_type === "Swift Message");
+  const latest = [...(doc?.document_versions ?? [])].sort((a, b) => b.version - a.version)[0];
+  if (!data) return null;
+  return (
+    <Panel title="Swift Message" right={latest ? <Chip label="Submitted" tone="ok" dot={false} /> : <Chip label="Not uploaded" tone="warn" dot={false} />}>
+      {latest ? (
+        <div className="flex items-center gap-3 px-4 py-3">
+          <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-info/10 text-info"><FileText className="size-4" /></span>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[0.8438rem] font-medium" title={latest.file_name}>{latest.file_name}</div>
+            <div className="text-[0.75rem] text-mut">Version {latest.version} · {fmtDateTime(latest.uploaded_at)}</div>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => openFile(latest.file_path)}><ExternalLink /> Open</Button>
+        </div>
+      ) : (
+        <p className="px-4 py-3 text-[0.8125rem] text-mut">This collection was made before the Swift Message was required. Upload it in Documents.</p>
+      )}
+    </Panel>
   );
 }

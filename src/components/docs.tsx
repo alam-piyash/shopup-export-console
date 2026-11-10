@@ -447,8 +447,8 @@ export function DocPanel({ title, docs, hint, empty, actions, banner }: { title:
     { v: "final", label: finalWord, n: finals },
   ];
   return (
-    <section className="rounded-[1.25rem] border border-line bg-surface shadow-[0_1px_2px_rgb(0_0_0/0.03),0_12px_32px_rgb(0_0_0/0.04)]">
-      <div className="flex flex-wrap items-center justify-between gap-4 px-5 pb-3 pt-5">
+    <section className="card overflow-hidden">
+      <div className="head-strip mb-2 flex flex-wrap items-center justify-between gap-4 border-b border-line px-4 py-3">
         <div className="flex min-w-0 items-center gap-3.5">
           {docs.length > 1 && <Ring value={finals} total={docs.length} />}
           <div className="flex min-w-0 flex-col gap-0.5">

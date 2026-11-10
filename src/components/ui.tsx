@@ -118,7 +118,7 @@ export function Money({ money: b, usd: u, className, align }: { money: number | 
 }
 
 export function Kpi({ label, value, sub, usdValue, icon, tone }: { label: string; value: ReactNode; sub?: ReactNode; usdValue?: number | string | null; icon?: ReactNode; tone?: Tone }) {
-  const line = usdValue !== null && usdValue !== undefined && usdValue !== "" ? money(usdValue) : null;
+  void usdValue; // amounts are all USD now; kept for call sites
   return (
     <div className="card relative flex min-w-0 flex-col gap-2.5 overflow-hidden px-5 py-4">
       <div className="flex items-center justify-between gap-2">
@@ -127,7 +127,6 @@ export function Kpi({ label, value, sub, usdValue, icon, tone }: { label: string
       </div>
       <div className="min-w-0">
         <div className={cn(typeof value === "string" && value.includes("-") ? "code-id" : "num", "truncate text-[1.5rem] font-semibold leading-tight tracking-tight")}>{value}</div>
-        {line && <div className={cn(typeof line === "string" && line.includes("-") ? "code-id" : "num", "mt-0.5 text-[0.7812rem] text-mut")}>{line}</div>}
       </div>
       {sub && <div className="text-[0.7812rem] text-mut">{sub}</div>}
     </div>
@@ -154,7 +153,7 @@ export function PageHeader({ title, sub, actions, eyebrow }: { title: ReactNode;
 export function Section({ title, hint, children, right, step, done, active }: { title: string; hint?: string; children: ReactNode; right?: ReactNode; step?: number; done?: boolean; active?: boolean }) {
   return (
     <section className={cn("card animate-in overflow-hidden", active && "border-accent/45 shadow-[inset_0_3px_0_rgb(var(--accent))]")}>
-      <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5">
+      <div className="head-strip flex items-center justify-between gap-3 border-b border-line px-5 py-3.5">
         <div className="flex items-center gap-2.5">
           {step !== undefined && <span className={cn("num grid size-6 place-items-center rounded-md text-[0.75rem] font-semibold", done ? "bg-ok text-white" : "bg-accent/15 text-accent")}>{done ? <Check className="size-3.5" /> : step}</span>}
           <div>
@@ -173,7 +172,7 @@ export function Panel({ title, right, children, className }: { title?: ReactNode
   return (
     <div className={cn("card overflow-hidden", className)}>
       {(title || right) && (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
+        <div className="head-strip flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
           <div className="text-[0.9375rem] font-semibold">{title}</div>
           {right}
         </div>
