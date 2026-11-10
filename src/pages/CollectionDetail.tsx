@@ -36,7 +36,7 @@ export default function CollectionDetail() {
 
       <KpiGrid cols={3}>
         <Kpi label="Amount received" value={money(c.amount)} sub={c.bank_reference || "USD"} />
-        <Kpi label="EXPs covered" value={c.collection_exps.length} sub={c.collection_exps.map((x) => x.exps?.code).join(", ")} />
+        <Kpi label="EXPs covered" value={c.collection_exps.length} sub={`${money(c.collection_exps.reduce((s, x) => s + Number(x.amount), 0))} in EXPs`} />
         <Kpi label="Submitted" value={fmtDate(c.created_at)} sub={c.is_demo ? "Demo" : profiles[c.created_by] ?? ""} />
       </KpiGrid>
 

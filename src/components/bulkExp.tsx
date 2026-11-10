@@ -5,8 +5,7 @@ import { toast } from "sonner";
 import { rpc, useAllExps, useRefresh, useTrades } from "@/lib/api";
 import { money, errMsg } from "@/lib/format";
 import { EXP_FIELDS } from "@/lib/expFields";
-import { buildExpWorkbook, rowFromExp, saveBlob, type TemplateRow } from "@/lib/expTemplate";
-import type { Exp } from "@/lib/types";
+import { buildExpWorkbook, saveBlob, type ExpKind, type TemplateRow } from "@/lib/expTemplate";
 import { Button, Chip, Field, Modal, Progress, Segments, cn } from "./ui";
 import { TradePicker } from "./pickers";
 
@@ -76,7 +75,7 @@ async function runBulk(mode: BulkMode, rows: FileRow[], commit: boolean, onProgr
   return all;
 }
 
-async function parseFile(f: File, tradeCode: string): Promise<FileRow[]> {
+async function parseFile(f: File, tradeCode: string, defaultType = ""): Promise<FileRow[]> {
   let grid: unknown[][];
   if (/\.xlsx$/i.test(f.name)) {
     const readXlsx = (await import("read-excel-file")).default;
@@ -104,7 +103,8 @@ async function parseFile(f: File, tradeCode: string): Promise<FileRow[]> {
     });
     // rows with only an EXP Type are empty
     if (!Object.entries(vals).some(([k, v]) => v && k !== "type")) return;
-    const { type = "", amount = "", ...fields } = vals;
+    const { type: typeCell = "", amount = "", ...fields } = vals;
+    const type = typeCell || defaultType;
     const trade_code = tradeCode;
     // empty cells leave values unchanged on update
     const kept = Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== ""));
@@ -136,7 +136,7 @@ function Steps({ step }: { step: number }) {
  * Import or bulk update EXPs in three steps: template, upload, review.
  * Every row is checked on the server first; only the rows that pass are saved.
  */
-export function BulkExpDialog({ open, onOpenChange, mode = "create", prefill, tradeId }: { open: boolean; onOpenChange: (o: boolean) => void; mode?: BulkMode; prefill?: Exp[]; tradeId?: string }) {
+export function BulkExpDialog({ open, onOpenChange, mode = "create", tradeId }: { open: boolean; onOpenChange: (o: boolean) => void; mode?: BulkMode; tradeId?: string }) {
   const refresh = useRefresh();
   const create = mode === "create";
   const ref = useRef<HTMLInputElement>(null);
@@ -144,6 +144,7 @@ export function BulkExpDialog({ open, onOpenChange, mode = "create", prefill, tr
   const { data: allExps } = useAllExps();
   const trades = useMemo(() => (allTrades ?? []).filter((t) => t.status === "active" && t.contract_signed !== false), [allTrades]);
   const [preset, setPreset] = useState(tradeId ?? "");
+  const [kind, setKind] = useState<ExpKind>("advance");
   const [rows, setRows] = useState<FileRow[]>([]);
   const [checks, setChecks] = useState<Record<number, Result>>({});
   const [done, setDone] = useState<Record<number, Result>>({});
@@ -162,11 +163,7 @@ export function BulkExpDialog({ open, onOpenChange, mode = "create", prefill, tr
     setBusy("Preparing the file");
     try {
       const date = new Date().toISOString().slice(0, 10);
-      if (!create && prefill?.length) {
-        saveBlob(`exp-correction-${date}.xlsx`, await buildExpWorkbook({ mode: "update", rows: prefill.map(rowFromExp) }));
-      } else {
-        saveBlob(create ? `bulk-exp-${picked?.code ?? "template"}.xlsx` : "exp-correction-template.xlsx", await buildExpWorkbook({ mode, trade: tradeInfo, emptyRows: 300 }));
-      }
+      saveBlob(create ? `bulk-exp-${kind}-${picked?.code ?? "template"}.xlsx` : `exp-correction-${date}.xlsx`, await buildExpWorkbook({ mode, kind, trade: tradeInfo, emptyRows: 300 }));
       setStep(1);
     } catch (e) {
       toast.error(errMsg(e));
@@ -180,7 +177,7 @@ export function BulkExpDialog({ open, onOpenChange, mode = "create", prefill, tr
     setBusy("Reading the file");
     try {
       if (needTrade) throw new Error("Pick the trade first");
-      const parsed = await parseFile(f, picked?.code ?? "");
+      const parsed = await parseFile(f, picked?.code ?? "", create ? (kind === "regular" ? "Regular" : "Advance") : "");
       setRows(parsed);
       setFileName(f.name);
       setDone({});
@@ -225,7 +222,7 @@ export function BulkExpDialog({ open, onOpenChange, mode = "create", prefill, tr
 
   async function errorReport() {
     const bad = problems;
-    const blob = await buildExpWorkbook({ mode, trade: tradeInfo, rows: bad.map((r) => r.raw), emptyRows: bad.length + 50, errors: bad.map((r) => (done[r.n] ?? checks[r.n])?.error) });
+    const blob = await buildExpWorkbook({ mode, kind, trade: tradeInfo, rows: bad.map((r) => r.raw), emptyRows: bad.length + 50, errors: bad.map((r) => (done[r.n] ?? checks[r.n])?.error) });
     saveBlob(`${create ? "bulk-exp" : "exp-correction"}-problems.xlsx`, blob);
   }
 
@@ -267,28 +264,48 @@ export function BulkExpDialog({ open, onOpenChange, mode = "create", prefill, tr
           <div className="flex flex-col gap-3">
             <p className="text-[0.8125rem]">
               {create
-                ? "Pick the trade, download the Excel template, fill one row per EXP, then upload it. The template has dropdowns for EXP Type, Unit ISO, Incoterm and Dup Flag, and marks the cells each row still needs."
-                : prefill?.length
-                  ? `Download the ${prefill.length} EXP${prefill.length === 1 ? "" : "s"} you selected as an Excel file, fill in or correct the cells, then upload it.`
-                  : "Download the template, add one row per EXP to correct (matched by EXP Serial + EXP Year), then upload it."}
+                ? "Pick the trade and the EXP type, download the template, fill one row per EXP, then upload it."
+                : "Download the correction template, add one row per EXP to fill in or correct, then upload it. Rows are found by EXP Serial + EXP Year."}
             </p>
             {create && (
-              <Field label="Trade" required hint="Every EXP in the file is added to this trade.">
-                <TradePicker trades={trades} value={preset} onChange={setPreset} placeholder="Type an SC number, trade code or buyer" />
-              </Field>
+              <>
+                <Field label="Trade" required hint="Every EXP in the file is added to this trade.">
+                  <TradePicker trades={trades} value={preset} onChange={setPreset} placeholder="Type an SC number, trade code or buyer" />
+                </Field>
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-[0.8125rem] font-medium">EXP type <span className="text-accent">*</span></span>
+                  <div className="grid grid-cols-2 gap-1 rounded-xl bg-raised p-1 sm:max-w-md" role="radiogroup" aria-label="EXP type">
+                    {([["advance", "Advance", "11 required columns"], ["regular", "Regular", "All 23 columns"]] as [ExpKind, string, string][]).map(([v, label, sub]) => (
+                      <button key={v} type="button" role="radio" aria-checked={kind === v} onClick={() => setKind(v)}
+                        className={cn("rounded-lg px-3 py-1.5 text-left transition", kind === v ? "bg-surface shadow-sm ring-1 ring-line" : "text-mut hover:text-fg")}>
+                        <div className="text-[0.8438rem] font-medium">{label}</div>
+                        <div className="text-[0.7188rem] text-mut">{sub}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
             )}
             <Button className="self-start" disabled={!!busy || needTrade} onClick={downloadTemplate}>
-              <Download /> {!create && prefill?.length ? `Download ${prefill.length} EXPs` : "Download template"}
+              <Download /> {create ? `Download ${kind === "advance" ? "Advance" : "Regular"} template` : "Download template"}
             </Button>
           </div>
           <div className="rounded-xl border border-line bg-bg p-4 text-[0.8125rem]">
-            <div className="mb-2 font-medium">Advance or Regular</div>
-            <p className="text-mut">Both are the same EXP. The type only decides what is needed now.</p>
-            <dl className="mt-3 grid grid-cols-[6.5rem_1fr] gap-x-3 gap-y-2">
-              <dt className="font-medium">Advance</dt><dd className="text-mut">Issued before shipment. 11 fields now; shipment, invoice and bank fields later.</dd>
-              <dt className="font-medium">Regular</dt><dd className="text-mut">Everything is known. All 23 fields.</dd>
-            </dl>
-            <p className="mt-3 text-mut">{create ? "Lc Contact and Importer fill from the trade. Each EXP number (Serial + Year) can exist only once." : "Empty cells keep the saved value. Locked fields and Amount Inv do not change. Set EXP Type to Regular to complete an Advance EXP."}</p>
+            <div className="mb-2 font-medium">About the template</div>
+            <ul className="list-disc space-y-1.5 pl-4 text-mut">
+              <li><span className="font-medium text-bad">Red</span> column headers with * are required. Grey ones are optional.</li>
+              {create ? (
+                <>
+                  <li>{kind === "advance" ? "Advance: issued before shipment. Only the 11 Advance columns; shipment, invoice and bank details come later with EXP correction." : "Regular: everything is known now. All 23 columns."}</li>
+                  <li>Lc Contact and Importer fill from the trade. Each EXP number (Serial + Year) can exist only once.</li>
+                </>
+              ) : (
+                <>
+                  <li>Fill only what changes. Empty cells keep the saved value.</li>
+                  <li>Write Regular in EXP Type to complete an Advance EXP. Locked fields and Amount Inv do not change here.</li>
+                </>
+              )}
+            </ul>
           </div>
         </div>
       )}

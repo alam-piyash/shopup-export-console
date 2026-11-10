@@ -60,7 +60,7 @@ export default function Exps() {
               trigger={<Button variant="outline"><FileStack /> Bulk <ChevronDown /></Button>}
               items={[
                 { label: "Bulk EXP", hint: "Add many EXPs to a trade from Excel", icon: <FileUp />, onClick: () => setBulk("create") },
-                { label: "EXP correction", hint: selRows.length ? `Correct the ${selRows.length} selected EXPs` : "Fill in or correct many EXPs from Excel", icon: <FilePen />, onClick: () => setBulk("update") },
+                { label: "EXP correction", hint: "Fill in or correct many EXPs from Excel", icon: <FilePen />, onClick: () => setBulk("update") },
               ]}
             />
             <Button onClick={() => setAddOpen(true)}><Plus /> Add EXP</Button>
@@ -68,7 +68,7 @@ export default function Exps() {
         }
       />
       <AddExpDialog open={addOpen} onOpenChange={setAddOpen} />
-      <BulkExpDialog key={bulk ?? "none"} open={!!bulk} onOpenChange={(o) => !o && setBulk(null)} mode={bulk ?? "create"} tradeId={tradeFilter || undefined} prefill={bulk === "update" ? (selRows.length ? selRows : shown) : undefined} />
+      <BulkExpDialog key={bulk ?? "none"} open={!!bulk} onOpenChange={(o) => !o && setBulk(null)} mode={bulk ?? "create"} tradeId={tradeFilter || undefined} />
       <KpiGrid>
         <Kpi label="Total EXPs" value={inTrade.length} sub={moneyShort(total(inTrade))} />
         <Kpi label="Advance" value={count("advance")} sub="Waiting for shipment fields" />
@@ -104,7 +104,6 @@ export default function Exps() {
             <span className="font-medium">{selected.length} selected</span>
             <span className="num text-mut">{money(total(selRows))}</span>
             <span className="flex-1" />
-            <Button size="sm" variant="outline" onClick={() => setBulk("update")}><FilePen /> EXP correction</Button>
             <Button size="sm" variant="ghost" onClick={() => setSelected([])}><X /> Clear</Button>
           </div>
         )}

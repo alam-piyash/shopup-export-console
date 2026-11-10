@@ -120,13 +120,13 @@ export function Money({ money: b, usd: u, className, align }: { money: number | 
 export function Kpi({ label, value, sub, usdValue, icon, tone }: { label: string; value: ReactNode; sub?: ReactNode; usdValue?: number | string | null; icon?: ReactNode; tone?: Tone }) {
   void usdValue; // amounts are all USD now; kept for call sites
   return (
-    <div className="card relative flex min-w-0 flex-col gap-2.5 overflow-hidden px-5 py-4">
+    <div className="card relative flex min-w-0 flex-col gap-1.5 overflow-hidden px-4 py-3">
       <div className="flex items-center justify-between gap-2">
         <span className="text-[0.8125rem] text-fg/80">{label}</span>
         {icon && <span className="text-mut [&_svg]:size-4">{icon}</span>}
       </div>
       <div className="min-w-0">
-        <div className={cn(typeof value === "string" && value.includes("-") ? "code-id" : "num", "truncate text-[1.5rem] font-semibold leading-tight tracking-tight")}>{value}</div>
+        <div className={cn(typeof value === "string" && value.includes("-") ? "code-id" : "num", "truncate text-[1.375rem] font-semibold leading-tight tracking-tight")}>{value}</div>
       </div>
       {sub && <div className="text-[0.7812rem] text-mut">{sub}</div>}
     </div>

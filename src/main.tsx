@@ -6,6 +6,19 @@ import { Toaster } from "sonner";
 import App from "./App";
 import "./index.css";
 
+/** Text cut off with an ellipsis shows its full value on hover. */
+document.addEventListener("mouseover", (ev) => {
+  const el = (ev.target as HTMLElement | null)?.closest?.("*") as HTMLElement | null;
+  for (let n: HTMLElement | null = el, i = 0; n && i < 3; n = n.parentElement, i++) {
+    if (n.title || n.closest("[title]")) return;
+    const cs = getComputedStyle(n);
+    if (cs.textOverflow === "ellipsis" || cs.webkitLineClamp !== "none") {
+      if (n.scrollWidth > n.clientWidth + 1 || n.scrollHeight > n.clientHeight + 1) n.title = (n.innerText || n.textContent || "").trim();
+      return;
+    }
+  }
+}, { passive: true });
+
 const qc = new QueryClient({
   defaultOptions: { queries: { staleTime: 60_000, gcTime: 30 * 60_000, retry: 1, refetchOnWindowFocus: false } },
 });

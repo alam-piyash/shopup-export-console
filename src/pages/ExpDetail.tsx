@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Lock, Pencil, Scale } from "lucide-react";
+import { CircleDollarSign, Lock, Pencil } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { rpc, useRefresh } from "@/lib/api";
 import { money, moneyShort, errMsg, fmtDate } from "@/lib/format";
@@ -35,11 +35,11 @@ function ExpFieldsPanel({ exp, onEdit }: { exp: Exp; onEdit: () => void }) {
       </div>
       <div className="divide-y divide-line">
         {EXP_GROUPS.map((g) => (
-          <div key={g.key} className="grid sm:grid-cols-[8.5rem_minmax(0,1fr)]">
+          <div key={g.key} className="grid sm:grid-cols-[7.5rem_minmax(0,1fr)]">
             <div className="flex items-center px-4 pt-2.5 sm:border-r sm:border-line sm:py-2.5" style={{ background: "rgb(var(--bg) / 0.6)" }}>
               <span className="lbl leading-tight">{g.title}</span>
             </div>
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 px-4 py-2.5 sm:grid-cols-3 xl:grid-cols-6">
+            <dl className="grid grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-x-4 gap-y-1.5 px-4 py-2">
               {EXP_FIELDS.filter((f) => f.group === g.key).map((f) => {
                 const v = show(f.key, f.kind);
                 const due = !v && (f.stage === "advance" || (dup && f.stage === "regular"));
@@ -112,7 +112,7 @@ export default function ExpDetail() {
             title={exp.pending_amount_change_id ? "A change is already awaiting approval" : undefined}
             onClick={() => setChanging(true)}
           >
-            <Scale /> Change amount
+            <CircleDollarSign /> Change amount
           </Button>
           <Button variant="outline" onClick={() => setEdit(true)}><Pencil /> Edit details</Button>
         </div>

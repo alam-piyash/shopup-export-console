@@ -64,10 +64,6 @@ export default function Dashboard() {
           <div className="text-[0.8125rem] text-mut">{greet}{firstName ? `, ${firstName[0].toUpperCase() + firstName.slice(1)}` : ""}</div>
           <h1 className="h1 mt-1">Dashboard</h1>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link to="/collections/new" className="btn btn-outline">New collection</Link>
-          <Link to="/trades/new" className="btn btn-primary">Create trade</Link>
-        </div>
       </div>
 
       {loading ? (
