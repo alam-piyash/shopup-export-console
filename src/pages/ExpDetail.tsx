@@ -39,7 +39,7 @@ function ExpFieldsPanel({ exp, onEdit }: { exp: Exp; onEdit: () => void }) {
             <div className="flex items-center px-4 pt-2.5 sm:border-r sm:border-line sm:py-2.5" style={{ background: "rgb(var(--tint) / 0.03)" }}>
               <span className="lbl leading-tight">{g.title}</span>
             </div>
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 px-4 py-2.5 sm:grid-cols-3 xl:grid-cols-4">
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 px-4 py-2.5 sm:grid-cols-3 xl:grid-cols-6">
               {EXP_FIELDS.filter((f) => f.group === g.key).map((f) => {
                 const v = show(f.key, f.kind);
                 const due = !v && (f.stage === "advance" || (dup && f.stage === "regular"));

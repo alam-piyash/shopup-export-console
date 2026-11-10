@@ -1,16 +1,16 @@
 import { useState, type ReactNode } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, FilePen, Lock, Undo2 } from "lucide-react";
+import { FilePen, Lock, Undo2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { actionLabel, actionTone, useActivity, useIsAdmin, useMe, useProfiles, useTrade, useTradeActions } from "@/lib/api";
-import { money, moneyShort, daysUntil, errMsg, fmtDate, fmtDateTime, pct, usd } from "@/lib/format";
-import type { Amendment, Attachment, Exp, TradeItem } from "@/lib/types";
-import { ApproveReject, Button, Chip, Confirm, Empty, Kpi, KpiGrid, LoadingRows, Money, Panel, Progress, Row, Tabs, cn } from "@/components/ui";
+import { useIsAdmin, useMe, useProfiles, useTrade, useTradeActions } from "@/lib/api";
+import { money, daysUntil, errMsg, fmtDate, pct } from "@/lib/format";
+import type { Amendment, Attachment, Exp, Trade, TradeItem } from "@/lib/types";
+import { ApproveReject, Button, Chip, Confirm, Empty, LoadingRows, Panel, Progress, Tabs, cn } from "@/components/ui";
 import { EntityDocList } from "@/components/entityDocs";
-import { ContractVersions, FollowupsPanel } from "@/components/contractPanel";
+import { ContractVersions } from "@/components/contractPanel";
 
-type Tab = "exps" | "contract" | "amendments" | "activity";
+type Tab = "overview" | "amendments";
 
 function useContractExtra(tradeId: string) {
   return useQuery({
@@ -33,8 +33,8 @@ function useContractExtra(tradeId: string) {
 export default function TradeDetail() {
   const { tradeId = "" } = useParams();
   const [params, setParams] = useSearchParams();
-  const tab = (params.get("tab") as Tab) || "exps";
-  const setTab = (t: Tab) => setParams(t === "exps" ? {} : { tab: t }, { replace: true });
+  const tab: Tab = params.get("tab") === "amendments" ? "amendments" : "overview";
+  const setTab = (t: Tab) => setParams(t === "overview" ? {} : { tab: t }, { replace: true });
   const { data, isLoading, error } = useTrade(tradeId);
   const extra = useContractExtra(tradeId);
   const isAdmin = useIsAdmin();
@@ -83,7 +83,7 @@ export default function TradeDetail() {
       {needsSigned && !["rejected", "closed"].includes(t.status) && (
         <div className="banner chip-warn flex-wrap items-center justify-between">
           <span>No signed sales contract yet. Upload the signed copy and mark it signed before adding EXPs.</span>
-          <Button size="sm" variant="outline" onClick={() => setTab("contract")}>Open sales contract</Button>
+          <Button size="sm" variant="outline" onClick={() => { setTab("overview"); setTimeout(() => document.getElementById("contract-doc")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50); }}>Open sales contract</Button>
         </div>
       )}
       {t.status === "revision_pending" && (
@@ -93,34 +93,20 @@ export default function TradeDetail() {
         </div>
       )}
 
-      <KpiGrid>
-        <Kpi label="Contract" value={moneyShort(contract)} usdValue={t.contract_amount_usd} sub={money(contract)} />
-        <Kpi label="EXP issued" value={moneyShort(issued)} usdValue={t.exp_issued_usd} sub={<div className="flex items-center gap-2"><Progress value={pct(issued, contract)} /><span className="num">{pct(issued, contract)}%</span></div>} />
-        <Kpi label="Collected" value={moneyShort(t.collected)} usdValue={t.collected_usd} sub={<div className="flex items-center gap-2"><Progress tone="ok" value={pct(t.collected, issued)} /><span className="num">{pct(t.collected, issued)}%</span></div>} />
-        <Kpi label="Available to issue" value={moneyShort(available)} sub={t.tolerance_pct ? `Amount changes allowed up to ${Number(t.tolerance_pct)}% over` : "Left to issue as EXPs"} />
-      </KpiGrid>
+      <TradeStrip t={t} exps={exps} contract={contract} issued={issued} available={available} />
 
       <div>
         <Tabs
           value={tab}
           onChange={setTab}
           tabs={[
-            { value: "exps", label: <>EXPs <span className="num text-mut">{exps.length}</span></> },
-            { value: "contract", label: "Sales contract" },
+            { value: "overview", label: "Overview" },
             { value: "amendments", label: <>Amendments {extra.data?.revs.length ? <span className="num text-mut">{extra.data.revs.length}</span> : null}{t.pending_revision_id && <span className="size-1.5 rounded-full bg-info" />}</> },
-            { value: "activity", label: "Activity" },
           ]}
         />
         <div className="mt-5">
-          {tab === "exps" && (
-            <div className="flex flex-col gap-5">
-              <ExpSummary exps={exps} contract={contract} tradeId={tradeId} active={t.status === "active" && !needsSigned} />
-              {(t.status === "active" || t.status === "revision_pending") && <FollowupsPanel trade={t} exps={exps} />}
-            </div>
-          )}
-          {tab === "contract" && <ContractTab tradeId={tradeId} />}
+          {tab === "overview" && <ContractTab tradeId={tradeId} />}
           {tab === "amendments" && <AmendmentsTab tradeId={tradeId} />}
-          {tab === "activity" && <ActivityTab tradeId={tradeId} />}
         </div>
       </div>
 
@@ -129,45 +115,28 @@ export default function TradeDetail() {
   );
 }
 
-/** Topline of the trade's EXPs: issued, value, Advance and Regular, collected. */
-function ExpSummary({ exps, contract, tradeId, active }: { exps: Exp[]; contract: number; tradeId: string; active: boolean }) {
+/** One strip of the numbers that matter: contract, EXPs (Advance and Regular), collected, left to issue. */
+function TradeStrip({ t, exps, contract, issued, available }: { t: Trade; exps: Exp[]; contract: number; issued: number; available: number }) {
   const sum = (a: Exp[]) => a.reduce((s, e) => s + Number(e.amount || 0), 0);
   const adv = exps.filter((e) => e.type === "advance"), reg = exps.filter((e) => e.type === "regular");
   const col = exps.filter((e) => e.collection_status === "approved"), pend = exps.filter((e) => e.collection_status === "pending_approval");
-  const total = sum(exps);
-  const cell = (label: string, big: ReactNode, sub: ReactNode) => (
-    <div className="min-w-0 px-4 py-3.5">
+  const collected = Number(t.collected ?? sum(col));
+  const cell = (label: string, big: ReactNode, sub: ReactNode, extra?: ReactNode) => (
+    <div className="flex min-w-0 flex-col gap-1 px-4 py-3.5">
       <div className="text-[0.75rem] text-mut">{label}</div>
-      <div className="num mt-0.5 text-[1.125rem] font-semibold leading-tight">{big}</div>
-      <div className="num mt-0.5 truncate text-[0.75rem] text-mut">{sub}</div>
+      <div className="num text-[1.25rem] font-semibold leading-tight tracking-tight">{big}</div>
+      {extra}
+      <div className="num truncate text-[0.75rem] text-mut">{sub}</div>
     </div>
   );
   return (
-    <section className="card overflow-hidden">
-      <div className="head-strip flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
-        <div>
-          <div className="text-[0.9375rem] font-semibold">EXP summary</div>
-          <div className="text-[0.75rem] text-mut">{exps.length ? "EXPs are added, corrected and searched on the EXPs page." : active ? "No EXPs yet. Add them on the EXPs page, one by one or from Excel." : "EXPs can be added once the trade is approved and the signed contract is on file."}</div>
-        </div>
-        {(exps.length > 0 || active) && <Link to={`/exps?trade=${tradeId}`} className="btn btn-outline btn-sm">{exps.length ? `View ${exps.length} EXP${exps.length === 1 ? "" : "s"}` : "Go to EXPs"} <ChevronRight /></Link>}
-      </div>
-      <div className="grid grid-cols-2 divide-line max-lg:[&>*:nth-child(n+3)]:border-t max-lg:[&>*:nth-child(even)]:border-l lg:grid-cols-5 lg:divide-x">
-      {cell("EXPs issued", exps.length, `${exps.filter((e) => e.status === "open").length} open`)}
-      {cell("EXP value", money(total), `${contract ? pct(total, contract) : 0}% of contract`)}
-      {cell("Advance", adv.length, money(sum(adv)))}
-      {cell("Regular", reg.length, money(sum(reg)))}
-      {cell("Collected", <span className="text-ok">{money(sum(col))}</span>, `${col.length} of ${exps.length} EXPs${pend.length ? `, ${pend.length} pending approval` : ""} · due ${money(total - sum(col))}`)}
-      </div>
+    <section className="card grid grid-cols-2 overflow-hidden divide-line max-lg:[&>*:nth-child(n+3)]:border-t max-lg:[&>*:nth-child(even)]:border-l lg:grid-cols-5 lg:divide-x">
+      {cell("Contract", money(contract), t.tolerance_pct ? `Tolerance ${Number(t.tolerance_pct)}%` : `SC ${t.sales_contract_no}`)}
+      {cell("EXP issued", money(issued), `${exps.length} EXP${exps.length === 1 ? "" : "s"} · ${pct(issued, contract)}% of contract`, <Progress value={pct(issued, contract)} />)}
+      {cell("Advance / Regular", <>{adv.length} <span className="text-mut">/</span> {reg.length}</>, `${money(sum(adv))} / ${money(sum(reg))}`)}
+      {cell("Collected", <span className="text-ok">{money(collected)}</span>, `${col.length} of ${exps.length} EXPs${pend.length ? `, ${pend.length} pending` : ""}`, <Progress tone="ok" value={pct(collected, issued)} />)}
+      {cell("Left to issue", money(available), `Due for collection ${money(issued - collected)}`)}
     </section>
-  );
-}
-
-function Group({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className="card p-5">
-      <div className="lbl mb-3">{title}</div>
-      {children}
-    </div>
   );
 }
 
@@ -181,58 +150,74 @@ function ContractTab({ tradeId }: { tradeId: string }) {
   const extras = Object.entries((t.contract_extra ?? {}) as Record<string, string>);
   const notify = t.notify_parties ?? [];
   const opt = (v?: string | number | null) => (v === null || v === undefined || v === "" ? <span className="text-mut">Not set</span> : String(v));
+  const F = ({ label, children, wide }: { label: string; children: ReactNode; wide?: boolean }) => (
+    <div className={cn("min-w-0", wide && "col-span-2")}>
+      <dt className="text-[0.6875rem] leading-4 text-mut">{label}</dt>
+      <dd className="text-[0.8125rem] font-medium leading-5 [overflow-wrap:anywhere]">{children}</dd>
+    </div>
+  );
+  const groups: { title: string; body: ReactNode }[] = [
+    { title: "Contract", body: (
+      <>
+        <F label="SC number"><span className="code-id">{t.sales_contract_no}</span></F>
+        <F label="Contract date">{fmtDate(t.contract_date)}</F>
+        <F label="Shipment deadline">{t.shipment_deadline ? fmtDate(t.shipment_deadline) : opt(t.shipment_timeline)}</F>
+        <F label="Expiry date">{t.expiry_date ? fmtDate(t.expiry_date) : opt(null)}</F>
+        <F label="Total CFR amount">{money(t.contract_amount)}</F>
+        <F label="Tolerance">{t.tolerance_pct ? `${Number(t.tolerance_pct)}% more or less` : opt(null)}</F>
+        {t.payment_terms && <F label="Terms of delivery and payment" wide>{t.payment_terms}</F>}
+      </>
+    ) },
+    { title: "Shipping", body: (
+      <>
+        <F label="Origin">{opt(t.country_of_origin)}</F>
+        <F label="Destination">{opt(t.country_of_destination)}</F>
+        <F label="Carriage by">{opt(t.carriage_by)}</F>
+        <F label="Shipping mark">{opt(t.shipping_mark)}</F>
+        <F label="Departure">{opt(t.departure_port)}</F>
+        <F label="Point of entry">{opt(t.point_of_entry)}</F>
+      </>
+    ) },
+    { title: "Parties", body: (
+      <>
+        <F label="Exporter" wide>{t.exporter}<div className="font-normal text-mut">{[t.exporter_address, t.exporter_phone, t.exporter_email].filter(Boolean).join(" · ")}</div></F>
+        <F label="Buyer (consignee)" wide>{t.importer_name}<div className="font-normal text-mut">{[t.buyer_address, t.importer_country, t.buyer_cr_no && `CR ${t.buyer_cr_no}`, t.buyer_vat_no && `VAT ${t.buyer_vat_no}`].filter(Boolean).join(" · ")}</div></F>
+        {notify.length > 0 && <F label={`Notify part${notify.length === 1 ? "y" : "ies"}`} wide>{notify.map((n, i) => <div key={i}>{n.name} <span className="font-normal text-mut">{n.address}</span></div>)}</F>}
+        {extras.map(([k, v]) => <F key={k} label={EXTRA_LABEL[k] ?? k.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())}>{String(v)}</F>)}
+      </>
+    ) },
+    { title: "Bank for TT", body: (
+      <>
+        <F label="Bank">{opt(t.bank_name)}</F>
+        <F label="Branch">{opt(t.bank_branch)}</F>
+        <F label="SWIFT"><span className="code-id">{opt(t.bank_swift)}</span></F>
+        <F label="Routing"><span className="code-id">{opt(t.bank_routing_no)}</span></F>
+        <F label="Account name">{opt(t.bank_account_name)}</F>
+        <F label="Account number"><span className="code-id">{opt(t.bank_account_no)}</span></F>
+      </>
+    ) },
+  ];
   return (
     <div className="flex flex-col gap-5">
-      <ContractVersions trade={t} items={extra?.items ?? []} revs={extra?.revs ?? []} />
-      <div className="grid gap-5 lg:grid-cols-2">
-        <Group title="Sales contract">
-          <Row label="SC number" value={<span className="code-id">{t.sales_contract_no}</span>} />
-          <Row label="Contract date" value={fmtDate(t.contract_date)} />
-          <Row label="Total CFR amount" value={<Money money={t.contract_amount} usd={t.contract_amount_usd} align="end" />} />
-          <Row label="Tolerance" value={t.tolerance_pct ? `${Number(t.tolerance_pct)}% more or less at seller's option` : opt(null)} />
-          <Row label="Shipping mark" value={opt(t.shipping_mark)} />
-          <Row label="Origin" value={opt(t.country_of_origin)} />
-          <Row label="Destination" value={opt(t.country_of_destination)} />
-          <Row label="Expiry date" value={t.expiry_date ? fmtDate(t.expiry_date) : opt(null)} />
-          <Row label="Shipment deadline" value={t.shipment_deadline ? fmtDate(t.shipment_deadline) : opt(t.shipment_timeline)} />
-          <Row label="Carriage by" value={opt(t.carriage_by)} />
-          <Row label="Departure" value={opt(t.departure_port)} />
-          <Row label="Point of entry" value={opt(t.point_of_entry)} />
-          {t.payment_terms && <Row label="Terms of delivery and payment" value={t.payment_terms} />}
-          {extras.map(([k, v]) => <Row key={k} label={EXTRA_LABEL[k] ?? k.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())} value={String(v)} />)}
-          <div className="mt-3 text-[0.75rem] text-mut">
+      <section className="card overflow-hidden">
+        <div className="head-strip flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-4 py-2.5">
+          <h2 className="text-[0.9375rem] font-semibold">Contract details</h2>
+          <span className="text-[0.7188rem] text-mut">
             Submitted by {t.is_demo ? "Demo" : profiles[t.created_by] ?? "Unknown"} on {fmtDate(t.created_at)}
             {t.approved_at && ` · ${t.status === "rejected" ? "Rejected" : "Approved"} by ${t.is_demo ? "Demo" : (t.approved_by && profiles[t.approved_by]) ?? "admin"} on ${fmtDate(t.approved_at)}`}
-          </div>
-        </Group>
-        <div className="flex flex-col gap-5">
-          <Group title="Exporter">
-            <div className="font-medium">{t.exporter}</div>
-            {t.exporter_address && <div className="text-[0.8125rem] text-mut">{t.exporter_address}</div>}
-            <div className="text-[0.8125rem] text-mut">{[t.exporter_phone, t.exporter_email].filter(Boolean).join(" · ")}</div>
-          </Group>
-          <Group title="Buyer (consignee)">
-            <div className="font-medium">{t.importer_name}</div>
-            {t.buyer_address && <div className="text-[0.8125rem] text-mut">{t.buyer_address}</div>}
-            <div className="text-[0.8125rem] text-mut">{t.importer_country}</div>
-            <Row label="CR number" value={opt(t.buyer_cr_no)} />
-            <Row label="VAT registration" value={opt(t.buyer_vat_no)} />
-          </Group>
-          <Group title="Notify parties">
-            {!notify.length ? <p className="text-[0.8125rem] text-mut">None.</p> : (
-              <ul className="space-y-2">{notify.map((n, i) => <li key={i} className="text-[0.8125rem]"><span className="font-medium">{n.name}</span> <span className="text-mut">{n.address}</span></li>)}</ul>
-            )}
-          </Group>
-          <Group title="Bank coordinates for receiving TT">
-            <Row label="Bank" value={opt(t.bank_name)} />
-            <Row label="Branch" value={opt(t.bank_branch)} />
-            <Row label="Routing" value={opt(t.bank_routing_no)} />
-            <Row label="SWIFT" value={opt(t.bank_swift)} />
-            <Row label="Account name" value={opt(t.bank_account_name)} />
-            <Row label="Account number" value={opt(t.bank_account_no)} />
-          </Group>
+          </span>
         </div>
-      </div>
+        <div className="divide-y divide-line">
+          {groups.map((g) => (
+            <div key={g.title} className="grid sm:grid-cols-[8.5rem_minmax(0,1fr)]">
+              <div className="flex items-center px-4 pt-2.5 sm:border-r sm:border-line sm:py-2.5" style={{ background: "rgb(var(--raised) / 0.35)" }}>
+                <span className="lbl leading-tight">{g.title}</span>
+              </div>
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-2 px-4 py-2.5 sm:grid-cols-3 xl:grid-cols-6">{g.body}</dl>
+            </div>
+          ))}
+        </div>
+      </section>
       <Panel title="Items">
         {!extra?.items.length ? <Empty title="No items" /> : (
           <div className="scroll-thin overflow-x-auto">
@@ -259,6 +244,9 @@ function ContractTab({ tradeId }: { tradeId: string }) {
           </div>
         )}
       </Panel>
+      <div id="contract-doc" className="scroll-mt-20">
+        <ContractVersions trade={t} items={extra?.items ?? []} revs={extra?.revs ?? []} />
+      </div>
     </div>
   );
 }
@@ -342,35 +330,3 @@ function AmendmentsTab({ tradeId }: { tradeId: string }) {
   );
 }
 
-function ActivityTab({ tradeId }: { tradeId: string }) {
-  const profiles = useProfiles().data ?? {};
-  const { data, isLoading } = useActivity(200, tradeId);
-  if (isLoading) return <LoadingRows />;
-  if (!data?.length) return <Panel><Empty title="No activity yet" /></Panel>;
-  return (
-    <Panel>
-      <ol className="p-5">
-        {data.map((a, i) => {
-          const d = a.details ?? {};
-          const bits: string[] = [];
-          if (d.code) bits.push(String(d.code));
-          if (d.doc) bits.push(String(d.doc));
-          if (d.old_amount !== undefined && d.new_amount !== undefined) bits.push(`${money(d.old_amount as number)} to ${money(d.new_amount as number)}`);
-          else if (d.amount !== undefined) bits.push(money(d.amount as number));
-          return (
-            <li key={a.id} className="relative flex gap-3 pb-5 last:pb-0">
-              {i < data.length - 1 && <span className="absolute left-[0.3125rem] top-4 h-full w-px bg-line" />}
-              <span className={cn("relative mt-1.5 size-[0.6875rem] shrink-0 rounded-full border-2 border-surface", { ok: "bg-ok", bad: "bg-bad", warn: "bg-warn", info: "bg-info", gray: "bg-mut" }[actionTone(a.action)])} />
-              <div className="min-w-0 text-[0.8438rem]">
-                <span className="font-medium">{a.is_demo ? "Demo" : profiles[a.actor_id ?? ""] ?? "System"}</span>{" "}
-                <span className="text-mut">{actionLabel(a.action)}</span> <span className="num">{bits.join(" · ")}</span>
-                {d.reason ? <div className="text-[0.7812rem] text-mut">Reason: {String(d.reason)}</div> : null}
-                <div className="num text-[0.7188rem] text-mut">{fmtDateTime(a.created_at)}</div>
-              </div>
-            </li>
-          );
-        })}
-      </ol>
-    </Panel>
-  );
-}
