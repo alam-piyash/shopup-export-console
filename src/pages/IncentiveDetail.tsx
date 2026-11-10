@@ -1,8 +1,9 @@
 import { Link, useParams } from "react-router-dom";
 import { useDecide, useIncentives, useIsAdmin, useProfiles } from "@/lib/api";
 import { money, fmtDate } from "@/lib/format";
-import { ApproveReject, Chip, Empty, Kpi, KpiGrid, LoadingRows, Money, Panel, Row } from "@/components/ui";
+import { ApproveReject, Chip, Empty, LoadingRows } from "@/components/ui";
 import { EntityDocPanel } from "@/components/entityDocs";
+import { DetailHeader, ExpRowsTable, HeroCard } from "@/components/detailParts";
 
 export default function IncentiveDetail() {
   const { incentiveId = "" } = useParams();
@@ -15,59 +16,43 @@ export default function IncentiveDetail() {
   if (!r) return <Empty title="Incentive not found" body="It may have been removed." action={<Link to="/incentives" className="btn btn-outline">Back to incentives</Link>} />;
   const pending = r.status === "pending_approval";
   const trades = [...new Map(r.incentive_exps.map((e) => [e.exps?.trades?.code, e.exps?.trades])).values()].filter(Boolean);
+  const tradeIds = r.incentive_exps.map((e) => e.exps?.trades?.code).filter(Boolean);
+  const who = r.is_demo ? "Demo" : profiles[r.created_by];
+  const colOf = (e: (typeof r.incentive_exps)[number]) => e.exps?.collection_exps?.map((x) => x.collections).find((c) => c && c.status === "approved")?.code ?? "";
 
   return (
-    <>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0">
-          <div className="code-id text-[0.8125rem] text-mut">{trades.map((t) => `${t?.code} · ${t?.importer_name}`).join(", ")}</div>
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <h1 className="h1 code-id">{r.code}</h1>
-            <Chip status={r.status} />
-            {r.is_demo && <Chip label="Demo" tone="gray" dot={false} />}
-          </div>
-        </div>
-        {isAdmin && pending && <ApproveReject label={r.code} onApprove={() => decide(r.id, true)} onReject={(reason) => decide(r.id, false, reason)} />}
-      </div>
+    <div className="mx-auto flex w-full max-w-[65rem] flex-col gap-5">
+      <DetailHeader
+        code={r.code}
+        chips={<><Chip status={r.status} />{r.is_demo && <Chip label="Demo" tone="gray" dot={false} />}</>}
+        meta={<>{trades.map((t, i) => <span key={t?.code}>{i > 0 && ", "}<span className="code-id">{t?.code}</span> · {t?.importer_name}</span>)} · Submitted {fmtDate(r.created_at)}{who ? ` by ${who}` : ""}</>}
+        actions={isAdmin && pending ? <ApproveReject label={r.code} onApprove={() => decide(r.id, true)} onReject={(reason) => decide(r.id, false, reason)} /> : undefined}
+      />
 
       {r.rejection_reason && <div className="banner chip-bad">Rejected: {r.rejection_reason}</div>}
       {pending && !isAdmin && <div className="banner chip-warn">Waiting for an admin to approve.</div>}
 
-      <KpiGrid cols={4}>
-        <Kpi label="Incentive" value={money(r.incentive_amount)} sub={`${Number(r.incentive_pct)}% of FOB`} />
-        <Kpi label="FOB" value={money(r.fob)} sub="Net proceed minus freight" />
-        <Kpi label="EXPs claimed" value={r.incentive_exps.length} sub={`${money(r.exp_amount)} EXP amount`} />
-        <Kpi label="Submitted" value={fmtDate(r.created_at)} sub={r.is_demo ? "Demo" : profiles[r.created_by] ?? ""} />
-      </KpiGrid>
+      <HeroCard
+        label="Incentive"
+        amount={money(r.incentive_amount)}
+        aside={`${Number(r.incentive_pct)}% of FOB · ${r.incentive_exps.length} EXP${r.incentive_exps.length === 1 ? "" : "s"}`}
+        stats={[
+          { label: "EXP amount", value: money(r.exp_amount) },
+          { label: "Net proceed", value: money(r.net_proceed) },
+          { label: "minus Freight", value: money(r.freight) },
+          { label: "= FOB", value: money(r.fob) },
+          { label: "× Rate", value: `${Number(r.incentive_pct)}%` },
+        ]}
+      />
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-        <div className="flex flex-col gap-5">
-          <Panel title="Calculation">
-            <div className="px-4 py-2">
-              <Row label="EXP amount" value={<span className="num">{money(r.exp_amount)}</span>} />
-              <Row label="Net proceed" value={<Money money={r.net_proceed} usd={r.net_proceed_usd} align="end" />} />
-              <Row label="Freight" value={<Money money={r.freight} usd={r.freight_usd} align="end" />} />
-              <Row label="FOB (net minus freight)" value={<span className="num">{money(r.fob)}</span>} />
-              <Row label="Incentive rate" value={<span className="num">{Number(r.incentive_pct)}%</span>} />
-            </div>
-            <div className="flex items-baseline justify-between border-t border-line bg-bg px-4 py-3">
-              <span className="lbl">Incentive</span>
-              <span className="num text-[1.125rem] font-semibold">{money(r.incentive_amount)}</span>
-            </div>
-          </Panel>
-          <Panel title="EXPs in this claim">
-            <ul className="divide-y divide-line/70">
-              {r.incentive_exps.map((e) => (
-                <li key={e.exps?.code} className="flex items-center justify-between gap-3 px-4 py-2.5">
-                  <span className="code-id min-w-0 truncate text-[0.8438rem]">{e.exps?.code} <span className="text-mut">· {e.exps?.trades?.code}</span></span>
-                  <span className="num shrink-0 text-[0.8438rem]">{money(e.amount)}</span>
-                </li>
-              ))}
-            </ul>
-          </Panel>
-        </div>
-        <EntityDocPanel entityType="incentive" entityId={r.id} folder="incentives" hint="Add a new version each time a copy comes back. Mark final to close a document." />
-      </div>
-    </>
+      <EntityDocPanel entityType="incentive" entityId={r.id} folder="incentives" hint="Add a new version each time a copy comes back. Mark final to close a document." />
+
+      <ExpRowsTable
+        title="EXPs in this claim"
+        sub={`${r.incentive_exps.length} EXP${r.incentive_exps.length === 1 ? "" : "s"}${new Set(tradeIds).size === 1 ? ` · all from ${tradeIds[0]}` : ""}`}
+        rows={r.incentive_exps}
+        extra={{ label: "Collection", cell: (e) => colOf(e) || "Not set" }}
+      />
+    </div>
   );
 }

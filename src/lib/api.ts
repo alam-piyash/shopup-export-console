@@ -239,7 +239,7 @@ export function useCollections() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("collections")
-        .select("*, trades(code, importer_name), collection_exps(amount, exps(code))")
+        .select("*, trades(code, importer_name), collection_exps(amount, exps(id, code, exp_serial, exp_year, exp_no, awb_no))")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as unknown as import("./types").Collection[];
@@ -253,7 +253,7 @@ export function useIncentives() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("incentives")
-        .select("*, incentive_exps(amount, exps(code, trades(code, importer_name)))")
+        .select("*, incentive_exps(amount, exps(id, code, exp_serial, exp_year, exp_no, awb_no, collection_exps(collections(code, status)), trades(code, importer_name)))")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as unknown as import("./types").Incentive[];

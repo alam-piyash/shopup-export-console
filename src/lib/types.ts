@@ -253,7 +253,7 @@ export type Collection = {
   is_demo: boolean;
   created_at: string;
   trades: { code: string; importer_name: string } | null;
-  collection_exps: { amount: Num; exps: { code: string } | null }[];
+  collection_exps: { amount: Num; exps: { id: string; code: string; exp_serial?: string | null; exp_year?: number | null; exp_no?: string | null; awb_no?: string | null } | null }[];
 };
 
 export type Incentive = {
@@ -273,7 +273,7 @@ export type Incentive = {
   rejection_reason: string | null;
   is_demo: boolean;
   created_at: string;
-  incentive_exps: { amount: Num; exps: { code: string; trades: { code: string; importer_name: string } | null } | null }[];
+  incentive_exps: { amount: Num; exps: { id: string; code: string; exp_serial?: string | null; exp_year?: number | null; exp_no?: string | null; awb_no?: string | null; collection_exps?: { collections: { code: string; status: string } | null }[]; trades: { code: string; importer_name: string } | null } | null }[];
 };
 
 export type UploadedFile = { path: string; name: string; size: number };

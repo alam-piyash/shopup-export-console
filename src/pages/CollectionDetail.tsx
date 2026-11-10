@@ -1,10 +1,10 @@
 import { Link, useParams } from "react-router-dom";
-import { ExternalLink, FileText } from "lucide-react";
-import { openFile, useCollections, useDecide, useIsAdmin, useProfiles } from "@/lib/api";
-import { useEntityDocs } from "@/lib/documents";
-import { money, fmtDate, fmtDateTime } from "@/lib/format";
-import { ApproveReject, Button, Chip, Empty, Kpi, KpiGrid, LoadingRows, Money, Panel, Row } from "@/components/ui";
+import { CheckCircle2 } from "lucide-react";
+import { useCollections, useDecide, useIncentives, useIsAdmin, useProfiles } from "@/lib/api";
+import { money, fmtDate } from "@/lib/format";
+import { ApproveReject, Chip, Empty, LoadingRows } from "@/components/ui";
 import { EntityDocPanel } from "@/components/entityDocs";
+import { DetailHeader, ExpRowsTable, HeroCard } from "@/components/detailParts";
 
 export default function CollectionDetail() {
   const { collectionId = "" } = useParams();
@@ -12,87 +12,49 @@ export default function CollectionDetail() {
   const decide = useDecide("collection");
   const profiles = useProfiles().data ?? {};
   const { data, isLoading } = useCollections();
+  const incs = useIncentives().data ?? [];
   if (isLoading) return <LoadingRows rows={6} />;
   const c = data?.find((r) => r.id === collectionId);
   if (!c) return <Empty title="Collection not found" body="It may have been removed." action={<Link to="/collections" className="btn btn-outline">Back to collections</Link>} />;
   const pending = c.status === "pending_approval";
+  const expTotal = c.collection_exps.reduce((s, x) => s + Number(x.amount), 0);
+  const matches = Math.round(expTotal * 100) === Math.round(Number(c.amount) * 100);
+  const ids = new Set(c.collection_exps.map((x) => x.exps?.id));
+  const inc = incs.find((i) => i.status !== "rejected" && i.incentive_exps.some((e) => ids.has(e.exps?.id)));
+  const who = c.is_demo ? "Demo" : profiles[c.created_by];
 
   return (
-    <>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0">
-          <Link to={`/trades/${c.trade_id}`} className="code-id text-[0.8125rem] text-mut hover:text-accent">{c.trades?.code} · {c.trades?.importer_name}</Link>
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <h1 className="h1 code-id">{c.code}</h1>
-            <Chip status={c.status} />
-            {c.is_demo && <Chip label="Demo" tone="gray" dot={false} />}
-          </div>
-        </div>
-        {isAdmin && pending && <ApproveReject label={c.code} onApprove={() => decide(c.id, true)} onReject={(reason) => decide(c.id, false, reason)} />}
-      </div>
+    <div className="mx-auto flex w-full max-w-[65rem] flex-col gap-5">
+      <DetailHeader
+        code={c.code}
+        chips={<><Chip status={c.status} />{c.is_demo && <Chip label="Demo" tone="gray" dot={false} />}</>}
+        meta={<><Link to={`/trades/${c.trade_id}`} className="code-id text-accent hover:underline">{c.trades?.code}</Link> · {c.trades?.importer_name} · Submitted {fmtDate(c.created_at)}{who ? ` by ${who}` : ""}</>}
+        actions={isAdmin && pending ? <ApproveReject label={c.code} onApprove={() => decide(c.id, true)} onReject={(reason) => decide(c.id, false, reason)} /> : undefined}
+      />
 
       {c.rejection_reason && <div className="banner chip-bad">Rejected: {c.rejection_reason}</div>}
       {pending && !isAdmin && <div className="banner chip-warn">Waiting for an admin to approve. The EXPs count as collected only after approval.</div>}
 
-      <KpiGrid cols={3}>
-        <Kpi label="Amount received" value={money(c.amount)} sub={c.bank_reference || "USD"} />
-        <Kpi label="EXPs covered" value={c.collection_exps.length} sub={`${money(c.collection_exps.reduce((s, x) => s + Number(x.amount), 0))} in EXPs`} />
-        <Kpi label="Submitted" value={fmtDate(c.created_at)} sub={c.is_demo ? "Demo" : profiles[c.created_by] ?? ""} />
-      </KpiGrid>
+      <HeroCard
+        label="Amount received"
+        amount={money(c.amount)}
+        aside={matches ? <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="size-4 text-ok" /> Matches {c.collection_exps.length} EXP{c.collection_exps.length === 1 ? "" : "s"} exactly</span> : `EXPs total ${money(expTotal)}`}
+        stats={[
+          { label: "EXPs covered", value: c.collection_exps.length },
+          { label: "Bank reference", value: c.bank_reference || <span className="text-mut">Not set</span> },
+          { label: c.status === "rejected" ? "Rejected on" : "Approved on", value: c.approved_at ? fmtDate(c.approved_at) : <span className="text-mut">Pending</span> },
+          { label: "Incentive", value: inc ? <Link to={`/incentives/${inc.id}`} className="code-id text-accent hover:underline">{inc.code}</Link> : <span className="text-mut">Not claimed</span> },
+        ]}
+      />
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-        <div className="flex flex-col gap-5">
-          <SwiftMessage collectionId={c.id} />
-          <Panel title="Details">
-            <div className="px-4 py-2">
-              <Row label="Amount received" value={<Money money={c.amount} usd={c.amount_usd} align="end" />} />
-              <Row label="Bank reference" value={c.bank_reference || "None"} />
-              <Row label="Trade" value={<Link to={`/trades/${c.trade_id}`} className="code-id hover:text-accent">{c.trades?.code}</Link>} />
-              <Row label="Status" value={<Chip status={c.status} />} />
-              {c.approved_at && <Row label={c.status === "rejected" ? "Rejected on" : "Approved on"} value={fmtDate(c.approved_at)} />}
-            </div>
-          </Panel>
-          <Panel title="EXPs in this collection">
-            <ul className="divide-y divide-line/70">
-              {c.collection_exps.map((x) => (
-                <li key={x.exps?.code} className="flex items-center justify-between gap-3 px-4 py-2.5">
-                  <span className="code-id text-[0.8438rem]">{x.exps?.code}</span>
-                  <span className="num text-[0.8438rem]">{money(x.amount)}</span>
-                </li>
-              ))}
-              <li className="flex items-center justify-between gap-3 bg-bg px-4 py-2.5">
-                <span className="lbl">Total</span>
-                <span className="num font-semibold">{money(c.collection_exps.reduce((s, x) => s + Number(x.amount), 0))}</span>
-              </li>
-            </ul>
-          </Panel>
-        </div>
-        <EntityDocPanel entityType="collection" entityId={c.id} folder="collections" hint="Add a new version each time a copy comes back. Mark final when the bank file is complete." />
-      </div>
-    </>
-  );
-}
+      <EntityDocPanel entityType="collection" entityId={c.id} folder="collections" hint="Add a new version each time a copy comes back. Mark final when the bank file is complete." />
 
-/** The file submitted with the collection: its Swift Message. */
-function SwiftMessage({ collectionId }: { collectionId: string }) {
-  const { data } = useEntityDocs("collection", [collectionId]);
-  const doc = data?.find((d) => d.entity_id === collectionId && d.doc_type === "Swift Message");
-  const latest = [...(doc?.document_versions ?? [])].sort((a, b) => b.version - a.version)[0];
-  if (!data) return null;
-  return (
-    <Panel title="Swift Message" right={latest ? <Chip label="Submitted" tone="ok" dot={false} /> : <Chip label="Not uploaded" tone="warn" dot={false} />}>
-      {latest ? (
-        <div className="flex items-center gap-3 px-4 py-3">
-          <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-info/10 text-info"><FileText className="size-4" /></span>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-[0.8438rem] font-medium" title={latest.file_name}>{latest.file_name}</div>
-            <div className="text-[0.75rem] text-mut">Version {latest.version} · {fmtDateTime(latest.uploaded_at)}</div>
-          </div>
-          <Button size="sm" variant="outline" onClick={() => openFile(latest.file_path)}><ExternalLink /> Open</Button>
-        </div>
-      ) : (
-        <p className="px-4 py-3 text-[0.8125rem] text-mut">This collection was made before the Swift Message was required. Upload it in Documents.</p>
-      )}
-    </Panel>
+      <ExpRowsTable
+        title="EXPs in this collection"
+        sub={`${c.collection_exps.length} EXP${c.collection_exps.length === 1 ? "" : "s"}${matches ? " · totals match the amount received" : ""}`}
+        rows={c.collection_exps}
+        extra={{ label: "AWB", cell: (r) => r.exps?.awb_no || "Not set" }}
+      />
+    </div>
   );
 }
