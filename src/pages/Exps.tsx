@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Download, FileStack, FilePen, FileUp, Plus, X } from "lucide-react";
+import { ChevronDown, FileStack, FilePen, FileUp, Plus, X } from "lucide-react";
 import { AddExpDialog } from "@/components/expDialogs";
-import { BulkExpDialog, expRowsForFile, type BulkMode } from "@/components/bulkExp";
+import { BulkExpDialog, type BulkMode } from "@/components/bulkExp";
 import { SearchBox, TradePicker, expMatches } from "@/components/pickers";
 import { EXP_DOCS, useAllExps, useTrades } from "@/lib/api";
-import { money, moneyShort, downloadCsv, fmtDate } from "@/lib/format";
+import { money, moneyShort, fmtDate } from "@/lib/format";
 import { expNumber, isShipped, typeLabel } from "@/lib/expFields";
-import { Button, Chip, Empty, Kpi, KpiGrid, LoadingRows, PageHeader, Panel, Segments, cn } from "@/components/ui";
+import { Button, Chip, Empty, Kpi, KpiGrid, LoadingRows, Menu, PageHeader, Panel, Segments, cn } from "@/components/ui";
 
 type Filter = "all" | "advance" | "regular" | "open" | "closed" | "docs_pending" | "uncollected" | "amount_pending";
 const PAGE = 200;
@@ -48,28 +48,27 @@ export default function Exps() {
   const selRows = rows.filter((e) => sel.has(e.id));
   const allShownOn = shown.length > 0 && shown.every((e) => sel.has(e.id));
   const toggleShown = () => setSelected(allShownOn ? selected.filter((id) => !shown.some((e) => e.id === id)) : [...new Set([...selected, ...shown.map((e) => e.id)])]);
-  const exportRows = (arr: typeof rows, name: string) =>
-    downloadCsv(`${name}-${new Date().toISOString().slice(0, 10)}.csv`, expRowsForFile(arr).map((r, i) => ({
-      Code: arr[i].code, ...r, "Issued amount": arr[i].issued_amount ?? arr[i].amount, "Docs final": arr[i].docs_final, Status: arr[i].status,
-      Collection: arr[i].collection_status ?? "", Incentive: arr[i].incentive_status ?? "",
-    })));
 
   return (
     <>
       <PageHeader
         title="EXPs"
-        sub="Every EXP across all trades. Add one, import many, or update many at once from a file."
+        sub="Every EXP across all trades. Add one, or use Bulk to add or correct many from an Excel file."
         actions={
           <>
-            <Button variant="outline" disabled={!shown.length} onClick={() => exportRows(shown, "exps")}><Download /> Export</Button>
-            <Button variant="outline" onClick={() => setBulk("update")}><FilePen /> Bulk update</Button>
-            <Button variant="outline" onClick={() => setBulk("create")}><FileUp /> Import</Button>
+            <Menu
+              trigger={<Button variant="outline"><FileStack /> Bulk <ChevronDown /></Button>}
+              items={[
+                { label: "Bulk EXP", hint: "Add many EXPs to a trade from Excel", icon: <FileUp />, onClick: () => setBulk("create") },
+                { label: "EXP correction", hint: selRows.length ? `Correct the ${selRows.length} selected EXPs` : "Fill in or correct many EXPs from Excel", icon: <FilePen />, onClick: () => setBulk("update") },
+              ]}
+            />
             <Button onClick={() => setAddOpen(true)}><Plus /> Add EXP</Button>
           </>
         }
       />
       <AddExpDialog open={addOpen} onOpenChange={setAddOpen} />
-      <BulkExpDialog key={bulk ?? "none"} open={!!bulk} onOpenChange={(o) => !o && setBulk(null)} mode={bulk ?? "create"} prefill={bulk === "update" ? (selRows.length ? selRows : shown) : undefined} />
+      <BulkExpDialog key={bulk ?? "none"} open={!!bulk} onOpenChange={(o) => !o && setBulk(null)} mode={bulk ?? "create"} tradeId={tradeFilter || undefined} prefill={bulk === "update" ? (selRows.length ? selRows : shown) : undefined} />
       <KpiGrid>
         <Kpi label="Total EXPs" value={inTrade.length} sub={moneyShort(total(inTrade))} />
         <Kpi label="Advance" value={count("advance")} sub="Waiting for shipment fields" />
@@ -105,8 +104,7 @@ export default function Exps() {
             <span className="font-medium">{selected.length} selected</span>
             <span className="num text-mut">{money(total(selRows))}</span>
             <span className="flex-1" />
-            <Button size="sm" variant="outline" onClick={() => exportRows(selRows, "exps-selected")}><Download /> Export selected</Button>
-            <Button size="sm" variant="outline" onClick={() => setBulk("update")}><FilePen /> Bulk update selected</Button>
+            <Button size="sm" variant="outline" onClick={() => setBulk("update")}><FilePen /> EXP correction</Button>
             <Button size="sm" variant="ghost" onClick={() => setSelected([])}><X /> Clear</Button>
           </div>
         )}

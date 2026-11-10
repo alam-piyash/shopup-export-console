@@ -67,12 +67,18 @@ export default function IncentiveNew() {
     }
   }
 
+  const pickedTrades = tradeList.filter((t) => trades.includes(t.id));
+  const need = (v: string, ok: boolean) => cn(!v.trim() || !ok ? "need" : "");
+  const formDone = selected.length > 0 && calc.errors.length === 0;
+  const stage = !trades.length ? 1 : !selected.length ? 2 : !formDone ? 3 : docsDone < INCENTIVE_DOCS.length ? 4 : 0;
+
   return (
     <>
-      <PageHeader title="New incentive" sub="Select trades, then collected EXPs, then fill in the calculation. All amounts in USD." />
+      <PageHeader title="New incentive" sub="Pick the trade, check its collected EXPs, then fill the form. All amounts in USD." />
       <div className="grid items-start gap-6 lg:grid-cols-[1fr_340px]">
         <div className="flex min-w-0 flex-col gap-5">
-          <Section step={1} title="Trades" hint="Trades with collected EXPs that are not yet claimed.">
+          <Section step={1} title="Trade" hint="Trades with collected EXPs that are not yet claimed." done={trades.length > 0} active={stage === 1}
+            right={trades.length > 0 ? <Chip label={`${trades.length} selected`} tone="ok" dot={false} /> : undefined}>
             {isLoading ? <p className="text-mut">Loading</p> : !tradeList.length ? <p className="text-mut">No collected EXPs available. Collections must be approved first.</p> : (
               <div className="flex flex-col gap-2">
                 {tradeList.length > 5 && <SearchBox value={tq} onChange={setTq} placeholder="Search trade code, SC number or buyer" />}
@@ -91,41 +97,46 @@ export default function IncentiveNew() {
                         }}
                       />
                       <div className="min-w-0 flex-1">
-                        <div className="code-id font-medium">{t.code} <span className="font-normal text-mut">· SC {t.sc}</span></div>
+                        <div className="code-id font-medium">SC {t.sc} <span className="font-normal text-mut">· {t.code}</span></div>
                         <div className="truncate text-[0.75rem] text-mut">{t.importer}</div>
                       </div>
-                      <Chip label={`${t.count} EXP`} tone="gray" dot={false} />
-                      <span className="num min-w-[6.875rem] text-right text-[0.8125rem]">{money(t.total)}</span>
+                      <Chip label={`${t.count} collected EXP${t.count === 1 ? "" : "s"}`} tone={on ? "ok" : "gray"} dot={false} />
+                      <span className="num min-w-[6.875rem] text-right text-[0.8125rem] font-medium">{money(t.total)}</span>
                     </label>
                   );
                 })}
               </div>
             )}
           </Section>
-          <Section step={2} title="Collected EXPs" hint="All EXPs of a selected trade are ticked. Untick any you want to leave out.">
-            {!trades.length ? <p className="text-mut">Select at least one trade.</p> : (
+          <Section step={2} title="Collected EXPs" hint="All collected EXPs of a selected trade are ticked. Untick any you want to leave out." done={selected.length > 0} active={stage === 2}
+            right={selected.length > 0 ? <Chip label={`${selected.length} EXP${selected.length === 1 ? "" : "s"} · ${money(expAmount)}`} tone="ok" dot={false} /> : undefined}>
+            {!trades.length ? <p className="text-mut">Select a trade above to see its collected EXPs.</p> : (
               <ExpMultiPicker
                 exps={exps}
                 selected={selected}
                 onChange={setSelected}
-                meta={(e) => [e.trade_code, e.collection_code, expNumber(e) && `EXP ${expNumber(e)}`].filter(Boolean).join(" · ")}
+                meta={(e) => [`SC ${e.sales_contract_no ?? e.trade_code}`, e.collection_code, expNumber(e) && `EXP ${expNumber(e)}`].filter(Boolean).join(" · ")}
               />
             )}
           </Section>
-          <Section step={3} title="Calculation inputs">
-            <Grid>
-              <Field label="Net proceed (USD)" required hint="After govt and bank charges">
-                <Input type="number" inputMode="decimal" step="0.01" value={net} onChange={(e) => setNet(e.target.value)} />
+          <Section step={3} title="Claim form" hint="Fields marked in amber still need a value." done={formDone} active={stage === 3}>
+            <div className="rounded-xl border border-line bg-bg px-3.5 py-2.5 text-[0.8125rem]">
+              {selected.length ? <>Claiming on <span className="font-medium">{selected.length} EXP{selected.length === 1 ? "" : "s"}</span> from {pickedTrades.map((t) => `SC ${t.sc}`).join(", ")} · EXP amount <span className="num font-medium">{money(expAmount)}</span></> : <span className="text-mut">Select EXPs first. The net proceed cannot be above their total.</span>}
+            </div>
+            <Grid cols={3}>
+              <Field label="Net proceed (USD)" required hint={n > expAmount && selected.length ? "Cannot be above the EXP amount" : "After govt and bank charges"} error={n > expAmount && selected.length > 0}>
+                <Input className={need(net, n > 0 && (!selected.length || n <= expAmount))} type="number" inputMode="decimal" step="0.01" value={net} onChange={(e) => setNet(e.target.value)} />
               </Field>
-              <Field label="Freight (USD)" required>
-                <Input type="number" inputMode="decimal" step="0.01" value={freight} onChange={(e) => setFreight(e.target.value)} />
+              <Field label="Freight (USD)" required hint={f >= n && n > 0 ? "Must be less than net proceed" : undefined} error={f >= n && n > 0}>
+                <Input className={need(freight, f >= 0 && (n <= 0 || f < n))} type="number" inputMode="decimal" step="0.01" value={freight} onChange={(e) => setFreight(e.target.value)} />
               </Field>
               <Field label="Incentive %" required>
-                <Input type="number" inputMode="decimal" step="0.01" value={pct} onChange={(e) => setPct(e.target.value)} placeholder="e.g. 10" />
+                <Input className={need(pct, p > 0 && p <= 100)} type="number" inputMode="decimal" step="0.01" value={pct} onChange={(e) => setPct(e.target.value)} placeholder="e.g. 10" />
               </Field>
             </Grid>
           </Section>
-          <Section step={4} title="Attachments" hint="All eight are required.">
+          <Section step={4} title="Attachments" hint={`All ${INCENTIVE_DOCS.length} are required.`} done={docsDone === INCENTIVE_DOCS.length} active={stage === 4}
+            right={<Chip label={`${docsDone}/${INCENTIVE_DOCS.length}`} tone={docsDone === INCENTIVE_DOCS.length ? "ok" : "gray"} dot={false} />}>
             <div className="flex flex-col gap-2">
               {INCENTIVE_DOCS.map((d) => <FileField key={d} label={d} folder="incentives" value={docs[d] ?? null} onChange={(file) => setDocs((s) => ({ ...s, [d]: file }))} required />)}
             </div>
@@ -134,12 +145,13 @@ export default function IncentiveNew() {
         <aside className="flex flex-col gap-3 lg:sticky lg:top-20">
           <div className="card p-5">
             <div className="lbl mb-2">Calculation</div>
+            <Row label={`Trade${pickedTrades.length === 1 ? "" : "s"}`} value={pickedTrades.length ? <span className="code-id">{pickedTrades.map((t) => t.sc || t.code).join(", ")}</span> : <span className="text-mut">Not selected</span>} />
             <Row label={`EXP amount (${selected.length})`} value={<span className="num">{money(expAmount)}</span>} />
             <Row label="Net proceed" value={<span className="num">{money(n)}</span>} />
             <Row label="Freight" value={<span className="num">minus {money(f)}</span>} />
             <Row label="FOB" value={<span className="num font-medium">{money(calc.fob)}</span>} />
             <Row label="Incentive %" value={<span className="num">{p}%</span>} />
-            <Row label="Attachments" value={<span className="num">{docsDone}/8</span>} />
+            <Row label="Attachments" value={<span className="num">{docsDone}/{INCENTIVE_DOCS.length}</span>} />
             <div className="my-3 border-t border-line" />
             <div className="lbl">Incentive</div>
             <div className="num mt-1 text-[1.75rem] font-semibold">{money(calc.incentive)}</div>

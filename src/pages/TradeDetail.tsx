@@ -1,15 +1,14 @@
 import { useState, type ReactNode } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, FilePen, FileText, FileUp, Lock, Pencil, Plus, Undo2 } from "lucide-react";
+import { ChevronRight, FilePen, FileText, Lock, Pencil, Undo2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { EXP_DOCS, actionLabel, actionTone, useActivity, useIsAdmin, useMe, useProfiles, useTrade, useTradeActions } from "@/lib/api";
 import { money, moneyShort, daysUntil, errMsg, fmtDate, fmtDateTime, pct, usd } from "@/lib/format";
 import type { Amendment, Attachment, Exp, TradeItem } from "@/lib/types";
 import { ApproveReject, Button, Chip, Confirm, Empty, Kpi, KpiGrid, LoadingRows, Money, Panel, Progress, Row, Segments, Tabs, cn } from "@/components/ui";
 import { EntityDocList } from "@/components/entityDocs";
-import { AddExpDialog, EditExpDialog } from "@/components/expDialogs";
-import { BulkExpDialog } from "@/components/bulkExp";
+import { EditExpDialog } from "@/components/expDialogs";
 import { ContractVersions, FollowupsPanel } from "@/components/contractPanel";
 import { SearchBox, expMatches } from "@/components/pickers";
 import { expNumber, typeLabel } from "@/lib/expFields";
@@ -43,8 +42,6 @@ export default function TradeDetail() {
   const extra = useContractExtra(tradeId);
   const isAdmin = useIsAdmin();
   const actions = useTradeActions();
-  const [addOpen, setAddOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
   const [editExp, setEditExp] = useState<Exp | null>(null);
   const [closing, setClosing] = useState(false);
 
@@ -83,8 +80,6 @@ export default function TradeDetail() {
           ) : (
             <Button variant="outline" disabled title="Only active trades without a pending amendment can be revised"><FilePen /> Revise contract</Button>
           )}
-          <Button variant="outline" disabled={t.status !== "active" || needsSigned} onClick={() => setImportOpen(true)}><FileUp /> Import EXPs</Button>
-          <Button disabled={t.status !== "active" || needsSigned} title={needsSigned ? "Upload the signed sales contract and mark it signed first" : undefined} onClick={() => setAddOpen(true)}><Plus /> Add EXP</Button>
         </div>
       </div>
 
@@ -123,7 +118,8 @@ export default function TradeDetail() {
         <div className="mt-5">
           {tab === "exps" && (
             <div className="flex flex-col gap-5">
-              <ExpList exps={exps} active={t.status === "active" && !needsSigned} onEdit={setEditExp} onAdd={() => setAddOpen(true)} onImport={() => setImportOpen(true)} />
+              {exps.length > 0 && <ExpSummary exps={exps} contract={contract} />}
+              <ExpList exps={exps} active={t.status === "active" && !needsSigned} tradeId={tradeId} onEdit={setEditExp} />
               {(t.status === "active" || t.status === "revision_pending") && <FollowupsPanel trade={t} exps={exps} />}
             </div>
           )}
@@ -133,15 +129,37 @@ export default function TradeDetail() {
         </div>
       </div>
 
-      {importOpen && <BulkExpDialog open onOpenChange={setImportOpen} mode="create" tradeId={tradeId} />}
-      <AddExpDialog open={addOpen} onOpenChange={setAddOpen} tradeId={tradeId} available={available} tolerance={t.tolerance_pct} />
       {editExp && <EditExpDialog exp={editExp} available={available} onClose={() => setEditExp(null)} />}
       <Confirm open={closing} onOpenChange={setClosing} title={`Close ${t.code}?`} body="All EXPs are closed. Closing the trade marks the contract as complete. Collections and incentives on its EXPs still work." confirmLabel="Close trade" onConfirm={() => actions.closeTrade(t.id)} />
     </>
   );
 }
 
-function ExpList({ exps: all, active, onEdit, onAdd, onImport }: { exps: Exp[]; active: boolean; onEdit: (e: Exp) => void; onAdd: () => void; onImport: () => void }) {
+/** Topline of the trade's EXPs: issued, value, Advance and Regular, collected. */
+function ExpSummary({ exps, contract }: { exps: Exp[]; contract: number }) {
+  const sum = (a: Exp[]) => a.reduce((s, e) => s + Number(e.amount || 0), 0);
+  const adv = exps.filter((e) => e.type === "advance"), reg = exps.filter((e) => e.type === "regular");
+  const col = exps.filter((e) => e.collection_status === "approved"), pend = exps.filter((e) => e.collection_status === "pending_approval");
+  const total = sum(exps);
+  const cell = (label: string, big: ReactNode, sub: ReactNode) => (
+    <div className="min-w-0 px-4 py-3.5">
+      <div className="text-[0.75rem] text-mut">{label}</div>
+      <div className="num mt-0.5 text-[1.125rem] font-semibold leading-tight">{big}</div>
+      <div className="num mt-0.5 truncate text-[0.75rem] text-mut">{sub}</div>
+    </div>
+  );
+  return (
+    <section className="card grid grid-cols-2 divide-line max-lg:[&>*:nth-child(n+3)]:border-t max-lg:[&>*:nth-child(even)]:border-l lg:grid-cols-5 lg:divide-x">
+      {cell("EXPs issued", exps.length, `${exps.filter((e) => e.status === "open").length} open`)}
+      {cell("EXP value", money(total), `${pct(total, contract)}% of contract`)}
+      {cell("Advance", adv.length, money(sum(adv)))}
+      {cell("Regular", reg.length, money(sum(reg)))}
+      {cell("Collected", <span className="text-ok">{money(sum(col))}</span>, `${col.length} of ${exps.length} EXPs${pend.length ? `, ${pend.length} pending approval` : ""} · due ${money(total - sum(col))}`)}
+    </section>
+  );
+}
+
+function ExpList({ exps: all, active, tradeId, onEdit }: { exps: Exp[]; active: boolean; tradeId: string; onEdit: (e: Exp) => void }) {
   const [q, setQ] = useState("");
   const [kind, setKind] = useState<"all" | "advance" | "regular" | "uncollected">("all");
   const [limit, setLimit] = useState(50);
@@ -167,8 +185,8 @@ function ExpList({ exps: all, active, onEdit, onAdd, onImport }: { exps: Exp[]; 
         <Empty
           icon={<FileText />}
           title="No EXPs yet"
-          body={active ? "Add EXPs one by one, or import many from an Excel file. Advance EXPs get their shipment fields later." : "EXPs can be added once the trade is active."}
-          action={active && <div className="flex gap-2"><Button onClick={onAdd}><Plus /> Add EXP</Button><Button variant="outline" onClick={onImport}><FileUp /> Import EXPs</Button></div>}
+          body={active ? "EXPs are added from the EXPs page, one by one or many at once from an Excel file." : "EXPs can be added once the trade is active."}
+          action={active && <Link to={`/exps?trade=${tradeId}`} className="btn btn-outline">Go to EXPs <ChevronRight /></Link>}
         />
       </Panel>
     );
@@ -246,11 +264,8 @@ function ContractTab({ tradeId }: { tradeId: string }) {
           <Row label="Carriage by" value={opt(t.carriage_by)} />
           <Row label="Departure" value={opt(t.departure_port)} />
           <Row label="Point of entry" value={opt(t.point_of_entry)} />
-          <Row label="Payment type" value={opt(t.payment_type)} />
-          {t.payment_terms && <Row label="Other terms" value={t.payment_terms} />}
-          {t.incentive_terms && <Row label="Incentive terms" value={t.incentive_terms} />}
+          {t.payment_terms && <Row label="Terms of delivery and payment" value={t.payment_terms} />}
           {extras.map(([k, v]) => <Row key={k} label={EXTRA_LABEL[k] ?? k.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())} value={String(v)} />)}
-          {t.notes && <p className="mt-3 text-[0.8125rem] text-mut">{t.notes}</p>}
           <div className="mt-3 text-[0.75rem] text-mut">
             Submitted by {t.is_demo ? "Demo" : profiles[t.created_by] ?? "Unknown"} on {fmtDate(t.created_at)}
             {t.approved_at && ` · ${t.status === "rejected" ? "Rejected" : "Approved"} by ${t.is_demo ? "Demo" : (t.approved_by && profiles[t.approved_by]) ?? "admin"} on ${fmtDate(t.approved_at)}`}

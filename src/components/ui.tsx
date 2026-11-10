@@ -1,6 +1,7 @@
 import { forwardRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import * as D from "@radix-ui/react-dialog";
-import { Loader2, X } from "lucide-react";
+import * as Pop from "@radix-ui/react-popover";
+import { Check, Loader2, X } from "lucide-react";
 import { clsx } from "clsx";
 import { toast } from "sonner";
 import { money, errMsg } from "@/lib/format";
@@ -149,12 +150,13 @@ export function PageHeader({ title, sub, actions, eyebrow }: { title: ReactNode;
   );
 }
 
-export function Section({ title, hint, children, right, step }: { title: string; hint?: string; children: ReactNode; right?: ReactNode; step?: number }) {
+/** done: the step badge turns into a green tick. active: accent edge, to mark the part that needs input. */
+export function Section({ title, hint, children, right, step, done, active }: { title: string; hint?: string; children: ReactNode; right?: ReactNode; step?: number; done?: boolean; active?: boolean }) {
   return (
-    <section className="card animate-in overflow-hidden">
+    <section className={cn("card animate-in overflow-hidden", active && "border-accent/45 shadow-[inset_0_3px_0_rgb(var(--accent))]")}>
       <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5">
         <div className="flex items-center gap-2.5">
-          {step !== undefined && <span className="num grid size-6 place-items-center rounded-md bg-accent/15 text-[0.75rem] font-semibold text-accent">{step}</span>}
+          {step !== undefined && <span className={cn("num grid size-6 place-items-center rounded-md text-[0.75rem] font-semibold", done ? "bg-ok text-white" : "bg-accent/15 text-accent")}>{done ? <Check className="size-3.5" /> : step}</span>}
           <div>
             <div className="text-[0.875rem] font-semibold">{title}</div>
             {hint && <div className="text-[0.7812rem] text-mut">{hint}</div>}
@@ -417,5 +419,28 @@ export function Avatar({ name, src, size = 32 }: { name?: string | null; src?: s
     <span className="grid shrink-0 place-items-center rounded-full bg-accent/15 text-[0.75rem] font-semibold text-accent" style={{ width: size, height: size }}>
       {ini}
     </span>
+  );
+}
+
+/** A small dropdown menu of actions. */
+export function Menu({ trigger, items }: { trigger: ReactNode; items: { label: string; hint?: string; icon?: ReactNode; onClick: () => void }[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Pop.Root open={open} onOpenChange={setOpen}>
+      <Pop.Trigger asChild>{trigger}</Pop.Trigger>
+      <Pop.Portal>
+        <Pop.Content align="end" sideOffset={6} className="z-[60] min-w-[16rem] rounded-xl border border-line bg-surface p-1.5 shadow-xl">
+          {items.map((it) => (
+            <button key={it.label} type="button" onClick={() => { setOpen(false); it.onClick(); }} className="flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition hover:bg-raised [&_svg]:mt-0.5 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-mut">
+              {it.icon}
+              <span className="min-w-0">
+                <span className="block text-[0.8438rem] font-medium">{it.label}</span>
+                {it.hint && <span className="block text-[0.75rem] text-mut">{it.hint}</span>}
+              </span>
+            </button>
+          ))}
+        </Pop.Content>
+      </Pop.Portal>
+    </Pop.Root>
   );
 }

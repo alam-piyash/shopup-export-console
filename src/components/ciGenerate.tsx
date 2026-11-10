@@ -40,19 +40,26 @@ async function loadSources(exp: Exp) {
   const cols = ((links ?? []) as unknown as { collection_id: string; collections: { status: string; created_at: string } | null }[])
     .filter((l) => l.collections && l.collections.status !== "rejected")
     .sort((a, b) => (b.collections!.created_at > a.collections!.created_at ? 1 : -1));
+  // field 50K is on the Swift Message (MT103); older collections carry it on the TT Voucher
   let tt: { path: string; name: string } | null = null;
-  for (const c of cols) {
-    const { data: d } = await supabase.from("documents").select("file_path, file_name").eq("entity_type", "collection").eq("entity_id", c.collection_id).eq("doc_type", "TT Voucher").maybeSingle();
-    if (d?.file_path) { tt = { path: d.file_path, name: d.file_name }; break; }
-    const { data: a } = await supabase.from("attachments").select("file_path, file_name").eq("entity_type", "collection").eq("entity_id", c.collection_id).eq("doc_type", "TT Voucher").order("created_at", { ascending: false }).limit(1).maybeSingle();
-    if (a?.file_path) { tt = { path: a.file_path, name: a.file_name }; break; }
-  }
   let notify: string[] | null = null;
-  if (tt) {
-    try {
-      const { data: blob } = await supabase.storage.from("documents").download(tt.path);
-      if (blob) notify = await readTtNotifyParty(blob);
-    } catch { notify = null; }
+  outer: for (const c of cols) {
+    for (const type of ["Swift Message", "TT Voucher"]) {
+      let f: { path: string; name: string } | null = null;
+      const { data: d } = await supabase.from("documents").select("file_path, file_name").eq("entity_type", "collection").eq("entity_id", c.collection_id).eq("doc_type", type).maybeSingle();
+      if (d?.file_path) f = { path: d.file_path, name: d.file_name };
+      else {
+        const { data: a } = await supabase.from("attachments").select("file_path, file_name").eq("entity_type", "collection").eq("entity_id", c.collection_id).eq("doc_type", type).order("created_at", { ascending: false }).limit(1).maybeSingle();
+        if (a?.file_path) f = { path: a.file_path, name: a.file_name };
+      }
+      if (!f) continue;
+      tt = tt ?? f;
+      try {
+        const { data: blob } = await supabase.storage.from("documents").download(f.path);
+        const n = blob ? await readTtNotifyParty(blob) : null;
+        if (n) { tt = f; notify = n; break outer; }
+      } catch { /* try the next file */ }
+    }
   }
   return { trade: trade as TradeRow, items: ((items ?? []) as { description: string; quantity_kg: number }[]).filter((i) => !isFreight(i.description)), tt, notify };
 }
@@ -220,7 +227,7 @@ export function GenerateCiDialog({ exp, docs, onClose, onEditExp }: { exp: Exp; 
             <div className="grid grid-cols-2 gap-1 rounded-xl bg-raised p-1">
               {[
                 { v: false, label: "Standard", sub: "Without notify party" },
-                { v: true, label: "With notify party", sub: src.tt ? "From the TT voucher" : "Needs a TT Voucher on the collection" },
+                { v: true, label: "With notify party", sub: src.tt ? "From the Swift Message" : "Needs the Swift Message on the collection" },
               ].map((o) => (
                 <button key={o.label} type="button" disabled={o.v && !src.tt && !notifyText} onClick={() => setWithNotify(o.v)} aria-pressed={withNotify === o.v}
                   className={cn("rounded-lg px-3 py-1.5 text-left transition disabled:cursor-not-allowed disabled:opacity-40", withNotify === o.v ? "bg-surface shadow-sm ring-1 ring-line" : "text-mut hover:text-fg")}>
@@ -230,7 +237,7 @@ export function GenerateCiDialog({ exp, docs, onClose, onEditExp }: { exp: Exp; 
               ))}
             </div>
             {withNotify && (
-              <Field label="Notify party" hint={src.notify ? `Read from field 50K of ${src.tt?.name}. Edit if needed.` : src.tt ? "Could not read field 50K from the TT voucher. Type it in." : undefined}>
+              <Field label="Notify party" hint={src.notify ? `Read from field 50K of ${src.tt?.name}. Edit if needed.` : src.tt ? "Could not read field 50K from the file. Type it in." : undefined}>
                 <Textarea rows={3} value={notifyText} onChange={(e) => setNotifyText(e.target.value)} />
               </Field>
             )}

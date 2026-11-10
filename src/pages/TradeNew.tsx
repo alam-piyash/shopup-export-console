@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { FileUp, Loader2, Plus, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { rpc, useRefresh, useTrades } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
 import { money, errMsg } from "@/lib/format";
 import type { UploadedFile } from "@/lib/types";
 import { FREIGHT_LABEL, nextScNo, useBuyers, useCompanyProfiles, useProducts, type Buyer, type CompanyProfile, type Notify } from "@/lib/masters";
@@ -39,11 +40,8 @@ const CONTRACT: F[] = [
   { key: "carriage_by", label: "Carriage by", type: "select", options: ["Air", "Sea", "Road"] },
   { key: "departure_port", label: "Departure airport or port" },
   { key: "point_of_entry", label: "Point of entry" },
-  { key: "payment_type", label: "Payment type", type: "select", options: ["Advance TT", "Part TT", "After receiving TT", "LC", "Other"] },
   { key: "tolerance_pct", label: "Quantity and amount tolerance (%)", type: "number", placeholder: "10", hint: "More or less at seller's option. Information only." },
   { key: "payment_terms", label: "Terms of delivery and payment", type: "textarea" },
-  { key: "incentive_terms", label: "Incentive terms" },
-  { key: "notes", label: "Notes (not printed)", type: "textarea" },
 ];
 const BANK: F[] = [
   { key: "bank_name", label: "Bank name" },
@@ -117,6 +115,7 @@ export default function TradeNew() {
   const [items, setItems] = useState<ItemLine[]>([emptyItem()]);
   const [freightUsd, setFreightUsd] = useState("");
   const [file, setFile] = useState<UploadedFile | null>(null);
+  const [signed, setSigned] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);
   const pdfRef = useRef<HTMLInputElement>(null);
@@ -220,11 +219,18 @@ export default function TradeNew() {
       };
       const id = await rpc<string>("create_trade", { p_data: data, p_items: allLines, p_file: null });
 
-      setBusy("Generating sales contract");
+      setBusy("Saving documents");
       try {
         const sc = scDataFrom({ ...(data as Record<string, unknown>), exporter: v.exporter, importer_name: v.importer_name, sales_contract_no: v.sales_contract_no, contract_date: v.contract_date }, allLines, [], v.shipment_deadline);
         await saveGeneratedVersion(id, sc, 1, "Generated from the trade form", profile?.logo_path);
-        if (file) await rpc("add_contract_version", { p_trade: id, p_file: file, p_source: "uploaded", p_note: "Uploaded when the trade was created" });
+        if (file) {
+          await rpc("add_contract_version", { p_trade: id, p_file: file, p_source: "uploaded", p_note: "Uploaded when the trade was created" });
+          if (signed) {
+            const { data: doc, error } = await supabase.from("contract_documents").select("id").eq("trade_id", id).eq("source", "uploaded").order("version", { ascending: false }).limit(1).single();
+            if (error) throw error;
+            await rpc("mark_contract_signed", { p_id: doc.id });
+          }
+        }
       } catch (e) {
         toast.error(`Trade saved, but the contract PDF failed: ${errMsg(e)}. Generate it from the Sales contract tab.`);
       }
@@ -242,7 +248,7 @@ export default function TradeNew() {
     <>
       <PageHeader
         title="Create trade"
-        sub="Fill the contract details. The Sales Contract / Proforma Invoice PDF is generated on submit. An admin approves the trade, and EXPs open once the signed copy is uploaded."
+        sub="Fill the contract details and submit. An admin approves the trade, and EXPs open once the signed copy is on file."
         actions={
           <>
             <input ref={pdfRef} type="file" accept="application/pdf" className="hidden" onChange={(e) => autofill(e.target.files?.[0])} />
@@ -266,8 +272,6 @@ export default function TradeNew() {
           <Section step={2} title="Sales contract" hint="Core contract details">
             {fields(CONTRACT)}
             {shipDays && <p className="text-[0.7812rem] text-mut">Shipment period {shipDays} days. Follow-ups on day {[1, 2, 3, 4].map((k) => Math.round((shipDays * k) / 4)).join(", ")}.</p>}
-            <FileField label="Signed copy (optional)" folder="trades/contracts" value={file} onChange={setFile} />
-            <p className="-mt-2 text-[0.75rem] text-mut">You can also upload the signed copy later. EXPs need a version marked signed.</p>
           </Section>
           <Section step={3} title="Buyer (consignee)" hint="Pick a saved buyer or type a new one">
             <Grid>
@@ -301,6 +305,14 @@ export default function TradeNew() {
             <div><Button variant="outline" size="sm" onClick={() => setNotify((s) => [...s, { name: "", address: "" }])}><Plus /> Add notify party</Button></div>
           </Section>
           <Section step={7} title="Bank coordinates for receiving TT">{fields(BANK)}</Section>
+          <Section step={8} title="Sales contract upload" hint="Optional. You can also upload it later from the trade page.">
+            <FileField label="Sales contract copy" folder="trades/contracts" value={file} onChange={(f) => { setFile(f); if (!f) setSigned(false); }} />
+            <label className={`flex items-center gap-2.5 text-[0.8125rem] ${file ? "" : "text-mut"}`}>
+              <input type="checkbox" checked={signed} disabled={!file} onChange={(e) => setSigned(e.target.checked)} />
+              Mark as signed (this is the copy signed by both parties)
+            </label>
+            <p className="text-[0.75rem] text-mut">EXPs open once the trade is approved and a signed copy is on file.</p>
+          </Section>
         </div>
 
         <aside className="flex flex-col gap-3 lg:sticky lg:top-20">
@@ -312,14 +324,14 @@ export default function TradeNew() {
             <Row label="Destination" value={v.country_of_destination || v.importer_country || <span className="text-mut">Not set</span>} />
             <Row label="Items" value={<span className="num">{items.filter((i) => i.description.trim()).length}</span>} />
             {freight > 0 && <Row label="Freight" value={<span className="num">{money(freight)}</span>} />}
-            <Row label="Signed copy" value={file ? <Chip label="Attached" tone="ok" /> : <Chip label="Later" tone="gray" />} />
+            <Row label="Sales contract copy" value={file ? <Chip label={signed ? "Signed" : "Attached"} tone="ok" /> : <Chip label="Later" tone="gray" />} />
             <div className="my-3 border-t border-line" />
             <div className="lbl">Total CFR amount</div>
             <div className="num mt-1 text-[1.75rem] font-semibold leading-tight">{money(totalUsd)}</div>
             {missing.length > 0 && <p className="mt-3 text-[0.7812rem] text-mut">Still needed: {missing.join(", ")}.</p>}
           </div>
           <Button className="h-11 w-full" disabled={!valid || !!busy} loading={!!busy} onClick={submit}>
-            {!busy && <Send />} {busy ?? "Submit and generate SC"}
+            {!busy && <Send />} {busy ?? "Submit"}
           </Button>
           <p className="text-center text-[0.75rem] text-mut">An admin reviews the trade before EXPs can be added.</p>
         </aside>

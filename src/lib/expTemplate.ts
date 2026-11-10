@@ -9,30 +9,27 @@ export const UNIT_ISO = ["KGM", "PCS", "TNE", "LTR", "MTR", "DZN", "SET", "PRS"]
 export const INCOTERMS = ["CFR", "FOB", "CIF", "CPT", "CIP", "FCA", "EXW", "DAP", "DPU", "DDP"];
 export const EXP_TYPES = ["Advance", "Regular"];
 
+/** The trade a new-EXP file is for; shown on the How to fill sheet. */
 export type TemplateTrade = { code: string; sc?: string | null; buyer?: string | null };
 
 /** A row for the file: values by field key plus trade_code and type. */
 export type TemplateRow = Record<string, string>;
 
 export const rowFromExp = (e: Exp): TemplateRow => ({
-  trade_code: e.trade_code,
   type: typeLabel(e.type),
   ...Object.fromEntries(EXP_FIELDS.map((f) => [f.key, fieldValue(e, f.key)])),
 });
 
 type Opts = {
   mode: "create" | "update";
-  trades: TemplateTrade[];
+  trade?: TemplateTrade;
   rows?: TemplateRow[];
   /** Error text per row (same order as rows): adds an Errors column. */
   errors?: (string | undefined)[];
-  /** Prefill Trade Code and EXP Type on the empty rows of a new file. */
-  presetTrade?: string;
   emptyRows?: number;
 };
 
 const COLS: { key: string; label: string; f?: ExpField }[] = [
-  { key: "trade_code", label: "Trade Code" },
   { key: "type", label: "EXP Type" },
   ...EXP_FIELDS.map((f) => ({ key: f.key, label: f.label, f })),
 ];
@@ -47,7 +44,6 @@ const FILL = (argb: string) => ({ type: "pattern" as const, pattern: "solid" as 
 const AUTO = ["lc_contract", "importer"];
 
 function note(c: (typeof COLS)[number], mode: Opts["mode"]): string {
-  if (c.key === "trade_code") return mode === "create" ? "Required. Pick the trade from the list (for example TRD-0003)." : "Shown for reference. Rows are matched by EXP Serial + EXP Year.";
   if (c.key === "type") return "Advance: shipment details come later (11 fields now).\nRegular: all 23 fields needed.\nAn Advance EXP can become Regular later, not the other way.";
   const f = c.f!;
   const parts: string[] = [];
@@ -75,7 +71,7 @@ export async function buildExpWorkbook(o: Opts): Promise<Blob> {
   const cols = withErrors ? [{ key: "_errors", label: "Errors" }, ...COLS] : COLS;
   const off = withErrors ? 1 : 0;
   const L = (key: string) => colLetter(cols.findIndex((c) => c.key === key));
-  const first = colLetter(off + 2), last = colLetter(cols.length - 1);
+  const first = colLetter(off + 1), last = colLetter(cols.length - 1);
 
   ws.columns = cols.map((c) => ({
     key: c.key,
@@ -86,7 +82,7 @@ export async function buildExpWorkbook(o: Opts): Promise<Blob> {
   cols.forEach((c, i) => {
     const cell = header.getCell(i + 1);
     cell.value = c.label;
-    const req = c.key === "trade_code" ? o.mode === "create" : c.key === "type" ? true : c.f && !AUTO.includes(c.key) && c.f.stage === "advance";
+    const req = c.key === "type" ? true : c.f && !AUTO.includes(c.key) && c.f.stage === "advance";
     const regular = c.f?.stage === "regular";
     cell.fill = FILL(c.key === "_errors" ? "FFB42318" : req ? "FF1F3A5F" : regular ? "FF2E6B5E" : "FF6B7280");
     cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10 };
@@ -96,7 +92,6 @@ export async function buildExpWorkbook(o: Opts): Promise<Blob> {
   header.height = 30;
 
   // lists for dropdowns
-  lists.getColumn(1).values = ["Trade Code", ...o.trades.map((t) => t.code)];
   lists.getColumn(2).values = ["EXP Type", ...EXP_TYPES];
   lists.getColumn(3).values = ["Unit ISO", ...UNIT_ISO];
   lists.getColumn(4).values = ["Incoterm", ...INCOTERMS];
@@ -107,7 +102,7 @@ export async function buildExpWorkbook(o: Opts): Promise<Blob> {
   const rows = o.rows ?? [];
   const total = Math.max(rows.length, o.emptyRows ?? 0, 1);
   for (let r = 0; r < total; r++) {
-    const src = rows[r] ?? (o.presetTrade ? { trade_code: o.presetTrade, type: "Advance" } : {});
+    const src: TemplateRow = rows[r] ?? {};
     const row = ws.getRow(r + 2);
     cols.forEach((c, i) => {
       const cell = row.getCell(i + 1);
@@ -140,7 +135,6 @@ export async function buildExpWorkbook(o: Opts): Promise<Blob> {
       type: "list", allowBlank: true, formulae: [ref], showErrorMessage: true,
       errorStyle: strict ? "stop" : "warning", errorTitle: title, error: strict ? `Pick a ${title} from the list.` : `${title} is not in the usual list. Keep it anyway?`,
     });
-  listDv("trade_code", listRef("A", o.trades.length), o.mode === "create", "Trade Code");
   listDv("type", listRef("B", EXP_TYPES.length), true, "EXP Type");
   listDv("unit_iso", listRef("C", UNIT_ISO.length), false, "Unit ISO");
   listDv("incoterm", listRef("D", INCOTERMS.length), false, "Incoterm");
@@ -164,7 +158,7 @@ export async function buildExpWorkbook(o: Opts): Promise<Blob> {
   for (const c of COLS) {
     const L1 = `${L(c.key)}2`;
     const isReg = c.f?.stage === "regular";
-    const isAll = c.key === "trade_code" ? o.mode === "create" : c.key === "type" || (c.f && c.f.stage === "advance" && !AUTO.includes(c.key));
+    const isAll = c.key === "type" || (c.f && c.f.stage === "advance" && !AUTO.includes(c.key));
     const typeCell = `$${L("type")}2`;
     const sqref = `${L(c.key)}2:${L(c.key)}${total + 1}`;
     if (isAll)
@@ -186,11 +180,11 @@ export async function buildExpWorkbook(o: Opts): Promise<Blob> {
   how.getColumn(1).width = 26;
   how.getColumn(2).width = 90;
   const lines: [string, string][] = [
-    ["EXP import", o.mode === "create" ? "One row per new EXP, on the EXPs sheet." : "One row per EXP to update. Rows are matched by EXP Serial + EXP Year."],
+    [o.mode === "create" ? "Bulk EXP" : "EXP correction", o.mode === "create" ? `One row per new EXP, on the EXPs sheet.${o.trade ? ` All rows go to trade ${o.trade.code}${o.trade.sc ? ` (SC ${o.trade.sc})` : ""}${o.trade.buyer ? `, ${o.trade.buyer}` : ""}.` : ""}` : "One row per EXP to correct. Rows are matched by EXP Serial + EXP Year."],
     ["", ""],
     ["EXP Type", "Advance: the EXP is issued before shipment. Fill the 11 blue columns now; the green ones come later."],
     ["", "Regular: all details are known. Fill the blue and the green columns (23 fields)."],
-    ["", "Both are the same EXP. The type only changes which columns are required. An Advance EXP becomes Regular later, by bulk update or on the EXP page."],
+    ["", "Both are the same EXP. The type only changes which columns are required. An Advance EXP becomes Regular later, by EXP correction or on the EXP page."],
     ["", ""],
     ["Header colours", "Blue: required for every EXP.  Green: required for a Regular EXP.  Grey: optional."],
     ["Cell colours", "Red: required and still empty for that row's type.  Light grey: not needed yet (Advance EXP)."],
@@ -203,10 +197,7 @@ export async function buildExpWorkbook(o: Opts): Promise<Blob> {
     ["", "Locked fields (Lc Contact, Importer, EXP Serial, EXP Year, Entry Date, HSCODE, Unit ISO, Incoterm) cannot change once saved."],
     ["", "Every row is checked before anything is saved. Rows with problems are listed with the reason."],
     ["", ""],
-    ["Example, Advance", "TRD-0003 · Advance · 026361 · 2026 · 26/04/2026 · 07099990 · KGM · CFR · 2100 · 5250 · 1050"],
-    ["", ""],
-    ["Trades in the list", ""],
-    ...o.trades.map((t) => [t.code, [t.sc && `SC ${t.sc}`, t.buyer].filter(Boolean).join(" · ")] as [string, string]),
+    ["Example, Advance", "Advance · 026361 · 2026 · 26/04/2026 · 07099990 · KGM · CFR · 2100 · 5250 · 1050"],
   ];
   lines.forEach(([a, b], i) => {
     const r = how.getRow(i + 1);

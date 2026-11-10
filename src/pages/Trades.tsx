@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeftRight, Download, Plus, Search } from "lucide-react";
+import { ArrowLeftRight, Plus, Search } from "lucide-react";
 import { useIsAdmin, useTradeActions, useTrades } from "@/lib/api";
-import { money, moneyShort, downloadCsv, fmtDate, pct } from "@/lib/format";
+import { money, moneyShort, fmtDate, pct } from "@/lib/format";
 import type { Trade } from "@/lib/types";
 import { ApproveReject, Button, Chip, Empty, Input, Kpi, KpiGrid, LoadingRows, Money, PageHeader, Panel, Segments, cn } from "@/components/ui";
 
@@ -54,15 +54,6 @@ export default function Trades() {
       (!q || [r.code, r.importer_name, r.products, r.sales_contract_no, r.importer_country].some((v) => v?.toLowerCase().includes(ql))),
   );
   const open = (t: Trade) => navigate(`/trades/${t.id}`);
-  const exportCsv = () =>
-    downloadCsv(
-      `trades-${new Date().toISOString().slice(0, 10)}.csv`,
-      shown.map((t) => ({
-        Code: t.code, "SC number": t.sales_contract_no, "Contract date": t.contract_date, Buyer: t.importer_name, Country: t.importer_country,
-        Products: t.products, "Contract USD": t.contract_amount, "EXP issued USD": t.exp_issued,
-        "Collected USD": t.collected, EXPs: t.exp_count, Status: t.status, Expiry: t.expiry_date ?? "",
-      })),
-    );
 
   return (
     <>
@@ -71,7 +62,6 @@ export default function Trades() {
         sub="One sales contract per trade. EXPs, collections and incentives follow approved trades."
         actions={
           <>
-            <Button variant="outline" onClick={exportCsv} disabled={!shown.length}><Download /> Export</Button>
             <Link to="/trades/new" className="btn btn-primary"><Plus /> Create trade</Link>
           </>
         }

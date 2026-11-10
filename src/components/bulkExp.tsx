@@ -4,7 +4,7 @@ import { ArrowLeft, Check, Download, FileSpreadsheet, Loader2, RotateCcw, Upload
 import { toast } from "sonner";
 import { rpc, useAllExps, useRefresh, useTrades } from "@/lib/api";
 import { money, errMsg } from "@/lib/format";
-import { EXP_FIELDS, fieldValue, typeLabel } from "@/lib/expFields";
+import { EXP_FIELDS } from "@/lib/expFields";
 import { buildExpWorkbook, rowFromExp, saveBlob, type TemplateRow } from "@/lib/expTemplate";
 import type { Exp } from "@/lib/types";
 import { Button, Chip, Field, Modal, Progress, Segments, cn } from "./ui";
@@ -12,27 +12,14 @@ import { TradePicker } from "./pickers";
 
 export type BulkMode = "create" | "update";
 
-/** File columns: Trade Code, EXP Type, the 23 template fields, then Flight No and Shipment ID. */
-export const FILE_HEADERS = ["Trade Code", "EXP Type", ...EXP_FIELDS.map((f) => f.label)];
-
 const key = (s: unknown) => String(s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
 const ALIASES: Record<string, string> = {
-  tradecode: "trade_code", tradeid: "trade_code", trade: "trade_code",
   exptype: "type", type: "type",
   lccontract: "lc_contract", lccontact: "lc_contract",
   amountinv: "amount", amount: "amount", amountusd: "amount",
   transdocnoawb: "awb_no", awbno: "awb_no",
 };
 for (const f of EXP_FIELDS) ALIASES[key(f.label)] = f.key;
-
-/** One row per EXP for the file, using the template column names. */
-export function expRowsForFile(exps: Exp[]) {
-  return exps.map((e) => ({
-    "Trade Code": e.trade_code,
-    "EXP Type": typeLabel(e.type),
-    ...Object.fromEntries(EXP_FIELDS.map((f) => [f.label, fieldValue(e, f.key)])),
-  }));
-}
 
 function parseCsv(text: string): string[][] {
   const out: string[][] = [];
@@ -89,7 +76,7 @@ async function runBulk(mode: BulkMode, rows: FileRow[], commit: boolean, onProgr
   return all;
 }
 
-async function parseFile(f: File, create: boolean): Promise<FileRow[]> {
+async function parseFile(f: File, tradeCode: string): Promise<FileRow[]> {
   let grid: unknown[][];
   if (/\.xlsx$/i.test(f.name)) {
     const readXlsx = (await import("read-excel-file")).default;
@@ -101,7 +88,6 @@ async function parseFile(f: File, create: boolean): Promise<FileRow[]> {
   const hi = grid.findIndex((r) => r.some((c) => key(c) === "expserial"));
   if (hi < 0) throw new Error("No header row found. The file needs the template columns (EXP Serial, EXP Year, ...). Download the template.");
   const cols = grid[hi].map((h) => ALIASES[key(h)] ?? null);
-  if (create && !cols.includes("trade_code")) throw new Error("Add a Trade Code column (for example TRD-0003) for new EXPs.");
   const parsed: FileRow[] = [];
   grid.slice(hi + 1).forEach((r, i) => {
     if (r.some((c) => key(c) === "expserial")) return; // a repeated header row
@@ -116,9 +102,10 @@ async function parseFile(f: File, create: boolean): Promise<FileRow[]> {
       if (v && f?.kind === "year") v = v.replace(/\.0+$/, "");
       vals[k] = v;
     });
-    // rows with only Trade Code and EXP Type are the template's prefilled empty rows
-    if (!Object.entries(vals).some(([k, v]) => v && k !== "type" && k !== "trade_code")) return;
-    const { trade_code = "", type = "", amount = "", ...fields } = vals;
+    // rows with only an EXP Type are empty
+    if (!Object.entries(vals).some(([k, v]) => v && k !== "type")) return;
+    const { type = "", amount = "", ...fields } = vals;
+    const trade_code = tradeCode;
     // empty cells leave values unchanged on update
     const kept = Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== ""));
     parsed.push({ n: hi + i + 2, trade_code, type, amount, fields: kept, label: kept.exp_serial && kept.exp_year ? `${kept.exp_serial}/${kept.exp_year}` : "", raw: vals });
@@ -167,17 +154,18 @@ export function BulkExpDialog({ open, onOpenChange, mode = "create", prefill, tr
   const [drag, setDrag] = useState(false);
   const [step, setStep] = useState(0);
 
-  const tradeOpts = trades.map((t) => ({ code: t.code, sc: t.sales_contract_no, buyer: t.importer_name }));
-  const presetCode = trades.find((t) => t.id === preset)?.code;
+  const picked = trades.find((t) => t.id === preset);
+  const tradeInfo = picked ? { code: picked.code, sc: picked.sales_contract_no, buyer: picked.importer_name } : undefined;
+  const needTrade = create && !picked;
 
   async function downloadTemplate() {
     setBusy("Preparing the file");
     try {
       const date = new Date().toISOString().slice(0, 10);
       if (!create && prefill?.length) {
-        saveBlob(`exp-update-${date}.xlsx`, await buildExpWorkbook({ mode: "update", trades: tradeOpts, rows: prefill.map(rowFromExp) }));
+        saveBlob(`exp-correction-${date}.xlsx`, await buildExpWorkbook({ mode: "update", rows: prefill.map(rowFromExp) }));
       } else {
-        saveBlob(presetCode ? `exp-import-${presetCode}.xlsx` : "exp-import-template.xlsx", await buildExpWorkbook({ mode, trades: tradeOpts, presetTrade: presetCode, emptyRows: 300 }));
+        saveBlob(create ? `bulk-exp-${picked?.code ?? "template"}.xlsx` : "exp-correction-template.xlsx", await buildExpWorkbook({ mode, trade: tradeInfo, emptyRows: 300 }));
       }
       setStep(1);
     } catch (e) {
@@ -191,7 +179,8 @@ export function BulkExpDialog({ open, onOpenChange, mode = "create", prefill, tr
     if (!f) return;
     setBusy("Reading the file");
     try {
-      const parsed = await parseFile(f, create);
+      if (needTrade) throw new Error("Pick the trade first");
+      const parsed = await parseFile(f, picked?.code ?? "");
       setRows(parsed);
       setFileName(f.name);
       setDone({});
@@ -236,8 +225,8 @@ export function BulkExpDialog({ open, onOpenChange, mode = "create", prefill, tr
 
   async function errorReport() {
     const bad = problems;
-    const blob = await buildExpWorkbook({ mode, trades: tradeOpts, rows: bad.map((r) => r.raw), emptyRows: bad.length + 50, errors: bad.map((r) => (done[r.n] ?? checks[r.n])?.error) });
-    saveBlob(`exp-${create ? "import" : "update"}-problems.xlsx`, blob);
+    const blob = await buildExpWorkbook({ mode, trade: tradeInfo, rows: bad.map((r) => r.raw), emptyRows: bad.length + 50, errors: bad.map((r) => (done[r.n] ?? checks[r.n])?.error) });
+    saveBlob(`${create ? "bulk-exp" : "exp-correction"}-problems.xlsx`, blob);
   }
 
   const reset = () => { setRows([]); setChecks({}); setDone({}); setFileName(""); setStep(1); };
@@ -249,7 +238,7 @@ export function BulkExpDialog({ open, onOpenChange, mode = "create", prefill, tr
     <>
       {busy && <span className="mr-auto flex items-center gap-2 self-center text-[0.8125rem] text-mut"><Loader2 className="size-4 animate-spin" /> {busy}</span>}
       <Button variant="outline" onClick={() => close(false)} disabled={!!busy}>Cancel</Button>
-      {step === 0 && <Button variant="ghost" onClick={() => setStep(1)}>I already have a file</Button>}
+      {step === 0 && <Button variant="ghost" disabled={needTrade} onClick={() => setStep(1)}>I already have a file</Button>}
     </>
   ) : (
     <>
@@ -271,24 +260,24 @@ export function BulkExpDialog({ open, onOpenChange, mode = "create", prefill, tr
   );
 
   return (
-    <Modal open={open} onOpenChange={close} xwide title={create ? "Import EXPs" : "Bulk update EXPs"} description={create ? "Add many EXPs from one Excel file." : "Fill in or correct many EXPs from one Excel file."} footer={footer}>
+    <Modal open={open} onOpenChange={close} xwide title={create ? "Bulk EXP" : "EXP correction"} description={create ? "Add many EXPs to one trade from an Excel file." : "Fill in or correct many EXPs from one Excel file."} footer={footer}>
       <div className="mb-4 border-b border-line pb-3"><Steps step={step} /></div>
       {step === 0 && (
         <div className="grid gap-4 md:grid-cols-[1fr_1fr]">
           <div className="flex flex-col gap-3">
             <p className="text-[0.8125rem]">
               {create
-                ? "Download the Excel template, fill one row per EXP, then upload it. The template has dropdowns for Trade Code, EXP Type, Unit ISO, Incoterm and Dup Flag, and marks the cells each row still needs."
+                ? "Pick the trade, download the Excel template, fill one row per EXP, then upload it. The template has dropdowns for EXP Type, Unit ISO, Incoterm and Dup Flag, and marks the cells each row still needs."
                 : prefill?.length
                   ? `Download the ${prefill.length} EXP${prefill.length === 1 ? "" : "s"} you selected as an Excel file, fill in or correct the cells, then upload it.`
-                  : "Download the template, add one row per EXP to update (matched by EXP Serial + EXP Year), then upload it."}
+                  : "Download the template, add one row per EXP to correct (matched by EXP Serial + EXP Year), then upload it."}
             </p>
             {create && (
-              <Field label="Trade (optional)" hint="Fills Trade Code on every row of the template.">
-                <TradePicker trades={trades} value={preset} onChange={setPreset} placeholder="Any trade, chosen per row" />
+              <Field label="Trade" required hint="Every EXP in the file is added to this trade.">
+                <TradePicker trades={trades} value={preset} onChange={setPreset} placeholder="Type an SC number, trade code or buyer" />
               </Field>
             )}
-            <Button className="self-start" disabled={!!busy} onClick={downloadTemplate}>
+            <Button className="self-start" disabled={!!busy || needTrade} onClick={downloadTemplate}>
               <Download /> {!create && prefill?.length ? `Download ${prefill.length} EXPs` : "Download template"}
             </Button>
           </div>
@@ -306,6 +295,7 @@ export function BulkExpDialog({ open, onOpenChange, mode = "create", prefill, tr
 
       {step === 1 && (
         <div className="flex flex-col gap-3">
+          {create && picked && <div className="rounded-xl border border-line bg-bg px-3.5 py-2.5 text-[0.8125rem]">EXPs in this file are added to <span className="code-id font-medium">{picked.code}</span> · SC {picked.sales_contract_no} · {picked.importer_name}</div>}
           <input ref={ref} type="file" className="hidden" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(e) => read(e.target.files?.[0])} />
           <button
             type="button"
@@ -329,7 +319,7 @@ export function BulkExpDialog({ open, onOpenChange, mode = "create", prefill, tr
           <div className="flex flex-wrap items-center gap-2 text-[0.8125rem]">
             <FileSpreadsheet className="size-4 text-mut" />
             <span className="truncate font-medium">{fileName}</span>
-            <span className="text-mut">· {rows.length} row{rows.length === 1 ? "" : "s"}</span>
+            <span className="text-mut">· {rows.length} row{rows.length === 1 ? "" : "s"}{create && picked ? <> · to <span className="code-id text-fg">{picked.code}</span> SC {picked.sales_contract_no}</> : null}</span>
           </div>
           <div className="grid grid-cols-3 gap-2">
             {[
@@ -362,7 +352,7 @@ export function BulkExpDialog({ open, onOpenChange, mode = "create", prefill, tr
           </div>
           <div className="scroll-thin max-h-[46vh] overflow-auto rounded-lg border border-line">
             <table className="tbl min-w-[48rem]">
-              <thead><tr>{["Row", ...(create ? ["Trade"] : []), "EXP number", "Type", "Amount Inv", "Result"].map((h) => <th key={h}>{h}</th>)}</tr></thead>
+              <thead><tr>{["Row", "EXP number", "Type", "Amount Inv", "Result"].map((h) => <th key={h}>{h}</th>)}</tr></thead>
               <tbody>
                 {list.map((r) => {
                   const d = done[r.n], c = checks[r.n];
@@ -371,7 +361,6 @@ export function BulkExpDialog({ open, onOpenChange, mode = "create", prefill, tr
                   return (
                     <tr key={r.n} className={cn(err && "bg-bad/[0.04]")}>
                       <td className="num text-mut">{r.n}</td>
-                      {create && <td className="code-id">{r.trade_code}</td>}
                       <td className="code-id">{r.label}</td>
                       <td>{r.type ? (/^dup/i.test(r.type) ? "Regular" : r.type[0].toUpperCase() + r.type.slice(1).toLowerCase()) : create ? "Advance" : ""}</td>
                       <td className="num">{r.amount ? money(r.amount) : ""}</td>
@@ -384,7 +373,7 @@ export function BulkExpDialog({ open, onOpenChange, mode = "create", prefill, tr
                     </tr>
                   );
                 })}
-                {!list.length && <tr><td colSpan={6} className="py-6 text-center text-mut">Nothing here</td></tr>}
+                {!list.length && <tr><td colSpan={5} className="py-6 text-center text-mut">Nothing here</td></tr>}
               </tbody>
             </table>
           </div>

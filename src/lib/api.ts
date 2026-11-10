@@ -14,7 +14,9 @@ export const EXP_DOCS = [
   "Phytosanitary Certificate",
   "Mushak 6.3",
 ] as const;
-export const COLLECTION_DOCS = ["Swift Copy", "PRC", "TT Voucher"] as const;
+/** Swift Message is required when a collection is submitted; the others can be added later. */
+export const COLLECTION_DOCS = ["Swift Message", "Swift Copy", "PRC", "TT Voucher"] as const;
+export const COLLECTION_REQUIRED: readonly string[] = ["Swift Message"];
 export const INCENTIVE_DOCS = [
   "Ka Form",
   "Association Certificate",

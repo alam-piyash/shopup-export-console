@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Download, Plus, Search, Wallet } from "lucide-react";
+import { Plus, Search, Wallet } from "lucide-react";
 import { useCollections, useDecide, useIsAdmin } from "@/lib/api";
-import { money, moneyShort, downloadCsv, fmtDate } from "@/lib/format";
+import { money, moneyShort, fmtDate } from "@/lib/format";
 import type { Collection } from "@/lib/types";
 import { ApproveReject, Button, Chip, Empty, Input, Kpi, KpiGrid, LoadingRows, Money, PageHeader, Panel, Row, Segments } from "@/components/ui";
 import { ScProgress } from "@/components/scProgress";
@@ -41,10 +41,6 @@ export default function Collections() {
         sub="Money received against EXPs. Only approved collections mark EXPs as collected."
         actions={
           <>
-            <Button variant="outline" disabled={!visible.length} onClick={() => downloadCsv(`collections-${new Date().toISOString().slice(0, 10)}.csv`, visible.map((r) => ({
-              Code: r.code, Trade: r.trades?.code, Buyer: r.trades?.importer_name, EXPs: r.collection_exps.map((c) => c.exps?.code).join(" "), "Amount USD": r.amount,
-              "Bank ref": r.bank_reference ?? "", Date: r.created_at.slice(0, 10), Status: r.status,
-            })))}><Download /> Export</Button>
             <Link to="/collections/new" className="btn btn-primary"><Plus /> New collection</Link>
           </>
         }

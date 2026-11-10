@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Send, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { COLLECTION_DOCS, rpc, selectAll, useRefresh } from "@/lib/api";
+import { COLLECTION_DOCS, COLLECTION_REQUIRED, rpc, selectAll, useRefresh } from "@/lib/api";
 import { money, cents, errMsg } from "@/lib/format";
 import type { Exp, UploadedFile } from "@/lib/types";
 import { Button, Chip, Field, Grid, Input, PageHeader, Row, Section, cn } from "@/components/ui";
@@ -44,7 +44,8 @@ export default function CollectionNew() {
   const diff = received - sum;
   const matches = received > 0 && selected.length > 0 && cents(sum) === cents(received);
   const docsDone = COLLECTION_DOCS.filter((d) => docs[d]).length;
-  const valid = matches && docsDone === COLLECTION_DOCS.length && !!tradeId;
+  const pendingDocs = COLLECTION_DOCS.filter((d) => !docs[d] && !COLLECTION_REQUIRED.includes(d));
+  const valid = matches && COLLECTION_REQUIRED.every((d) => docs[d]) && !!tradeId;
 
   /** Pick the subset of EXPs whose total equals the amount received (small sets only). */
   function autoMatch() {
@@ -72,7 +73,7 @@ export default function CollectionNew() {
         p_amount: received,
         p_bank_ref: bankRef,
         p_exp_ids: selected,
-        p_docs: COLLECTION_DOCS.map((d) => ({ doc_type: d, ...docs[d] })),
+        p_docs: COLLECTION_DOCS.filter((d) => docs[d]).map((d) => ({ doc_type: d, ...docs[d] })),
       });
       toast.success("Collection submitted for approval");
       refresh();
@@ -117,9 +118,12 @@ export default function CollectionNew() {
               />
             )}
           </Section>
-          <Section step={3} title="Documents" hint="All four are required.">
+          <Section step={3} title="Documents" hint="The Swift Message is required now. Swift Copy, PRC and TT Voucher can be added later from the collection page.">
             <div className="flex flex-col gap-2">
-              {COLLECTION_DOCS.map((d) => <FileField key={d} label={d} folder="collections" value={docs[d] ?? null} onChange={(f) => setDocs((s) => ({ ...s, [d]: f }))} required />)}
+              {COLLECTION_DOCS.map((d) => {
+                const req = COLLECTION_REQUIRED.includes(d);
+                return <FileField key={d} label={req ? d : `${d} (can be added later)`} folder="collections" value={docs[d] ?? null} onChange={(f) => setDocs((s) => ({ ...s, [d]: f }))} required={req} />;
+              })}
             </div>
           </Section>
         </div>
@@ -128,7 +132,7 @@ export default function CollectionNew() {
             <div className="lbl mb-2">Match check</div>
             <Row label="Amount received" value={<span className="num">{money(received)}</span>} />
             <Row label={`Selected EXPs (${selected.length})`} value={<span className="num">{money(sum)}</span>} />
-            <Row label="Documents" value={<span className="num">{docsDone}/4</span>} />
+            <Row label="Documents" value={<span className="num">{docsDone} attached{pendingDocs.length ? `, ${pendingDocs.length} pending` : ""}</span>} />
             <div className="my-3 border-t border-line" />
             <div className="lbl">Difference</div>
             <div className={cn("num mt-1 text-[1.75rem] font-semibold", matches ? "text-ok" : received ? "text-bad" : "text-mut")}>{money(diff)}</div>

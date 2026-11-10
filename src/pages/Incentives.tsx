@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Coins, Download, Plus, Search } from "lucide-react";
+import { Coins, Plus, Search } from "lucide-react";
 import { useDecide, useIncentives, useIsAdmin } from "@/lib/api";
-import { money, moneyShort, downloadCsv, fmtDate } from "@/lib/format";
+import { money, moneyShort, fmtDate } from "@/lib/format";
 import type { Incentive } from "@/lib/types";
 import { ApproveReject, Button, Chip, Empty, Input, Kpi, KpiGrid, LoadingRows, Money, PageHeader, Panel, Row, Segments, cn } from "@/components/ui";
 import { ScProgress } from "@/components/scProgress";
@@ -34,10 +34,6 @@ export default function Incentives() {
         sub="Export incentive claims built from collected EXPs. FOB = net proceed minus freight."
         actions={
           <>
-            <Button variant="outline" disabled={!visible.length} onClick={() => downloadCsv(`incentives-${new Date().toISOString().slice(0, 10)}.csv`, visible.map((r) => ({
-              Code: r.code, Trades: tradesOf(r), EXPs: r.incentive_exps.map((e) => e.exps?.code).join(" "), "EXP amount": r.exp_amount, "Net proceed": r.net_proceed,
-              Freight: r.freight, FOB: r.fob, "Rate %": r.incentive_pct, Incentive: r.incentive_amount, Date: r.created_at.slice(0, 10), Status: r.status,
-            })))}><Download /> Export</Button>
             <Link to="/incentives/new" className="btn btn-primary"><Plus /> New incentive</Link>
           </>
         }
