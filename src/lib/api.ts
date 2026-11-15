@@ -15,7 +15,7 @@ export const EXP_DOCS = [
   "Mushak 6.3",
 ] as const;
 /** Swift Message is required when a collection is submitted; the others can be added later. */
-export const COLLECTION_DOCS = ["Swift Message", "Swift Copy", "PRC", "TT Voucher"] as const;
+export const COLLECTION_DOCS = ["Swift Message", "Swift Copy", "PRC", "TT Voucher", "PRS"] as const;
 export const COLLECTION_REQUIRED: readonly string[] = ["Swift Message"];
 export const INCENTIVE_DOCS = [
   "Ka Form",
@@ -56,6 +56,17 @@ export function useMe() {
 export function useIsAdmin() {
   return useMe().data?.role === "admin";
 }
+/** Admin or Finance: may approve collections, settlements and incentives. */
+export function useIsApprover() {
+  const r = useMe().data?.role;
+  return r === "admin" || r === "finance";
+}
+/** Finance sees only collections and incentives and cannot create anything. */
+export function useIsFinance() {
+  return useMe().data?.role === "finance";
+}
+export const roleLabel = (r?: string | null) => (r === "admin" ? "Admin" : r === "operation" ? "Operation" : r === "finance" ? "Finance" : "No role");
+export const kindLabel = (k?: string | null) => (k === "prepaid" ? "Prepaid" : k === "settlement" ? "Settlement" : "EXP collection");
 
 export function usePendingCounts(enabled = true) {
   return useQuery({
@@ -239,7 +250,7 @@ export function useCollections() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("collections")
-        .select("*, trades(code, importer_name), collection_exps(amount, exps(id, code, exp_serial, exp_year, exp_no, awb_no))")
+        .select("*, trades(code, importer_name), collection_exps(amount, exps(id, code, exp_serial, exp_year, exp_no, awb_no, amount))")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as unknown as import("./types").Collection[];

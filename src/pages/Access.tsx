@@ -88,11 +88,13 @@ export default function Access() {
             <Field label="Role">
               <Select value={role} onChange={(e) => setRole(e.target.value as AppRole)}>
                 <option value="operation">Operation</option>
+                <option value="finance">Finance</option>
                 <option value="admin">Admin</option>
               </Select>
             </Field>
             <Button disabled={!emailOk} loading={busy} onClick={preassign}>{!busy && <UserPlus />} Save</Button>
           </div>
+          <p className="border-t border-line px-5 py-3 text-[0.75rem] text-mut">Operation creates and updates records. Finance sees only Collections and Incentives and approves them. Admin does everything, including all approvals and access.</p>
         </Panel>
         <div className="card p-5">
           <div className="lbl">Demo data</div>
@@ -123,7 +125,8 @@ export default function Access() {
                     <td className="w-44">
                       <Select value={p.role ?? ""} onChange={(e) => changeRole(p, e.target.value as AppRole)} disabled={lastAdminLock(p)} placeholder={p.role ? undefined : "No role"}>
                         <option value="operation">Operation</option>
-                        <option value="admin">Admin</option>
+                        <option value="finance">Finance</option>
+                <option value="admin">Admin</option>
                       </Select>
                     </td>
                     <td className="num text-mut">{p.last ? fmtDateTime(p.last) : "Never"}</td>

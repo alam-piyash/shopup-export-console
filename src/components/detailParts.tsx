@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { money } from "@/lib/format";
 import { expNumber } from "@/lib/expFields";
+import { useIsFinance } from "@/lib/api";
 
 /** One summary card: the headline amount, a note beside it, and a row of supporting figures. */
 export function HeroCard({ label, amount, aside, stats }: { label: string; amount: ReactNode; aside?: ReactNode; stats: { label: string; value: ReactNode }[] }) {
@@ -31,6 +32,7 @@ type Row = { amount: number | string; exps: { id: string; code: string; exp_seri
 /** EXPs in a collection or claim: five rows, then Show all, with the total. */
 export function ExpRowsTable<T extends Row>({ title, sub, rows, extra }: { title: string; sub: string; rows: T[]; extra: { label: string; cell: (r: T) => ReactNode } }) {
   const [all, setAll] = useState(false);
+  const finance = useIsFinance();
   const shown = all ? rows : rows.slice(0, 5);
   const total = rows.reduce((s, r) => s + Number(r.amount || 0), 0);
   return (
@@ -45,7 +47,7 @@ export function ExpRowsTable<T extends Row>({ title, sub, rows, extra }: { title
           <tbody>
             {shown.map((r, i) => (
               <tr key={r.exps?.id ?? i}>
-                <td>{r.exps ? <Link to={`/exps/${r.exps.id}`} className="code-id font-medium text-accent hover:underline">{r.exps.code}</Link> : ""}</td>
+                <td>{r.exps ? (finance ? <span className="code-id font-medium">{r.exps.code}</span> : <Link to={`/exps/${r.exps.id}`} className="code-id font-medium text-accent hover:underline">{r.exps.code}</Link>) : ""}</td>
                 <td className="code-id">{r.exps ? expNumber(r.exps as never) || <span className="text-mut">Not set</span> : ""}</td>
                 <td className="code-id text-mut">{extra.cell(r)}</td>
                 <td className="!text-right num font-medium">{money(r.amount)}</td>

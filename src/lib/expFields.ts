@@ -80,3 +80,11 @@ export const expNumber = (e: Pick<Exp, "exp_serial" | "exp_year" | "exp_no">) =>
 
 /** Documents open once the EXP has shipped: a Regular EXP, or a Ship Date or Shipment ID on an Advance EXP. */
 export const isShipped = (e: Pick<Exp, "type" | "shipment_date" | "shipment_id">) => e.type === "regular" || !!e.shipment_date || !!e.shipment_id;
+
+/** Collection state of an EXP, from the view's collected, allocated and outstanding amounts. */
+export function collectionState(e: Pick<Exp, "collection_status" | "allocated_amount" | "collected_amount" | "outstanding_amount" | "amount">) {
+  if (e.collection_status === "approved") return { label: "Collected", tone: "ok" as const };
+  if (e.collection_status === "pending_approval") return { label: "Pending", tone: "warn" as const };
+  if (Number(e.allocated_amount ?? 0) > 0) return { label: "Partly collected", tone: "info" as const };
+  return { label: "Not collected", tone: "gray" as const };
+}

@@ -69,7 +69,7 @@ export function ScProgress({ mode }: { mode: "incentive" | "collection" }) {
                 <div className="rounded-xl border border-line bg-bg px-3.5 py-3">
                   <div className="text-[0.75rem] text-mut">EXPs on this contract</div>
                   <div className="num mt-0.5 text-[1.125rem] font-semibold">{list.length} <span className="text-[0.8125rem] font-normal text-mut">· {money(sum(list))}</span></div>
-                  <div className="num text-[0.75rem] text-mut">{due.length + collPending.length} not collected yet · {money(sum(due) + sum(collPending))}</div>
+                  <div className="num text-[0.75rem] text-mut">{due.length + collPending.length} not fully collected · {money(due.reduce((t, e) => t + Number(e.outstanding_amount ?? e.amount), 0) + sum(collPending))}</div>
                 </div>
                 <div className="hidden items-center text-mut sm:flex"><ChevronRight className="size-4" /></div>
                 <div className="rounded-xl border border-ok/40 bg-ok/[0.06] px-3.5 py-3">

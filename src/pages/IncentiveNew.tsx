@@ -77,7 +77,7 @@ export default function IncentiveNew() {
       <PageHeader title="New incentive" sub="Pick the trade, check its collected EXPs, then fill the form. All amounts in USD." />
       <div className="grid items-start gap-6 lg:grid-cols-[1fr_340px]">
         <div className="flex min-w-0 flex-col gap-5">
-          <Section step={1} title="Trade" hint="Trades with collected EXPs that are not yet claimed." done={trades.length > 0} active={stage === 1}
+          <Section step={1} title="Trade" hint="Trades with fully collected EXPs that are not yet claimed." done={trades.length > 0} active={stage === 1}
             right={trades.length > 0 ? <Chip label={`${trades.length} selected`} tone="ok" dot={false} /> : undefined}>
             {isLoading ? <p className="text-mut">Loading</p> : !tradeList.length ? <p className="text-mut">No collected EXPs available. Collections must be approved first.</p> : (
               <div className="flex flex-col gap-2">
@@ -108,7 +108,7 @@ export default function IncentiveNew() {
               </div>
             )}
           </Section>
-          <Section step={2} title="Collected EXPs" hint="All collected EXPs of a selected trade are ticked. Untick any you want to leave out." done={selected.length > 0} active={stage === 2}
+          <Section step={2} title="Collected EXPs" hint="All fully collected EXPs of the trade are ticked. Partly collected EXPs appear once fully collected." done={selected.length > 0} active={stage === 2}
             right={selected.length > 0 ? <Chip label={`${selected.length} EXP${selected.length === 1 ? "" : "s"} · ${money(expAmount)}`} tone="ok" dot={false} /> : undefined}>
             {!trades.length ? <p className="text-mut">Select a trade above to see its collected EXPs.</p> : (
               <ExpMultiPicker

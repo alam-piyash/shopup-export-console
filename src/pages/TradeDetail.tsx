@@ -121,6 +121,11 @@ function TradeStrip({ t, exps, contract, issued, available }: { t: Trade; exps: 
   const adv = exps.filter((e) => e.type === "advance"), reg = exps.filter((e) => e.type === "regular");
   const col = exps.filter((e) => e.collection_status === "approved"), pend = exps.filter((e) => e.collection_status === "pending_approval");
   const collected = Number(t.collected ?? sum(col));
+  const part = exps.filter((e) => !e.collection_status && Number(e.allocated_amount ?? 0) > 0);
+  // money on EXPs (EXP collections and settlements); prepaid money not yet settled stays on the contract
+  const expCollected = exps.reduce((s, e) => s + Number(e.collected_amount ?? 0), 0);
+  const prepaidIn = Number(t.prepaid_received ?? 0);
+  const prepaidLeft = Math.max(prepaidIn - Number(t.prepaid_settled ?? 0) - Number(t.prepaid_settling ?? 0), 0);
   const cell = (label: string, big: ReactNode, sub: ReactNode, extra?: ReactNode) => (
     <div className="flex min-w-0 flex-col gap-1 px-4 py-3.5">
       <div className="text-[0.75rem] text-mut">{label}</div>
@@ -134,8 +139,8 @@ function TradeStrip({ t, exps, contract, issued, available }: { t: Trade; exps: 
       {cell("Contract", money(contract), t.tolerance_pct ? `Tolerance ${Number(t.tolerance_pct)}%` : `SC ${t.sales_contract_no}`)}
       {cell("EXP issued", money(issued), `${exps.length} EXP${exps.length === 1 ? "" : "s"} · ${pct(issued, contract)}% of contract`, <Progress value={pct(issued, contract)} />)}
       {cell("Advance / Regular", <>{adv.length} <span className="text-mut">/</span> {reg.length}</>, `${money(sum(adv))} / ${money(sum(reg))}`)}
-      {cell("Collected", <span className="text-ok">{money(collected)}</span>, `${col.length} of ${exps.length} EXPs${pend.length ? `, ${pend.length} pending` : ""}`, <Progress tone="ok" value={pct(collected, issued)} />)}
-      {cell("Left to issue", money(available), `Due for collection ${money(issued - collected)}`)}
+      {cell("Collected", <span className="text-ok">{money(collected)}</span>, prepaidIn > 0 ? (prepaidLeft > 0 ? `${money(prepaidLeft)} prepaid not settled` : `Includes ${money(prepaidIn)} prepaid`) : `${col.length} of ${exps.length} EXPs${part.length ? `, ${part.length} partly` : ""}${pend.length ? `, ${pend.length} pending` : ""}`, <Progress tone="ok" value={pct(collected, issued)} />)}
+      {cell("Left to issue", money(available), `Due for collection ${money(Math.max(issued - expCollected, 0))}`)}
     </section>
   );
 }

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Coins, Plus, Search } from "lucide-react";
-import { useDecide, useIncentives, useIsAdmin } from "@/lib/api";
+import { useDecide, useIncentives, useIsApprover, useIsFinance } from "@/lib/api";
 import { money, moneyShort, fmtDate } from "@/lib/format";
 import type { Incentive } from "@/lib/types";
 import { ApproveReject, Button, Chip, Empty, Input, Kpi, KpiGrid, LoadingRows, Money, PageHeader, Panel, Row, Segments, cn } from "@/components/ui";
@@ -10,7 +10,8 @@ import { ScProgress } from "@/components/scProgress";
 type Filter = "all" | "pending_approval" | "approved" | "rejected";
 
 export default function Incentives() {
-  const isAdmin = useIsAdmin();
+  const isApprover = useIsApprover();
+  const isFinance = useIsFinance();
   const [params, setParams] = useSearchParams();
   const filter = (params.get("status") as Filter) || "all";
   const setFilter = (f: Filter) => setParams(f === "all" ? {} : { status: f }, { replace: true });
@@ -22,7 +23,7 @@ export default function Incentives() {
   const count = (s: string) => rows.filter((r) => r.status === s).length;
   const tradesOf = (r: Incentive) => [...new Set(r.incentive_exps.map((e) => e.exps?.trades?.code))].join(", ");
   const actions = (r: Incentive) =>
-    isAdmin && r.status === "pending_approval" ? <ApproveReject label={r.code} onApprove={() => decide(r.id, true)} onReject={(reason) => decide(r.id, false, reason)} /> : null;
+    isApprover && r.status === "pending_approval" ? <ApproveReject label={r.code} onApprove={() => decide(r.id, true)} onReject={(reason) => decide(r.id, false, reason)} /> : null;
   const sumBy = (st: string) => rows.filter((r) => r.status === st).reduce((x, r) => x + Number(r.incentive_amount ?? 0), 0);
   const ql = q.toLowerCase();
   const visible = rows.filter((r) => (filter === "all" || r.status === filter) && (!q || [r.code, tradesOf(r), ...r.incentive_exps.map((e) => e.exps?.code)].some((v) => v?.toLowerCase().includes(ql))));
@@ -34,14 +35,14 @@ export default function Incentives() {
         sub="Export incentive claims built from collected EXPs. FOB = net proceed minus freight."
         actions={
           <>
-            <Link to="/incentives/new" className="btn btn-primary"><Plus /> New incentive</Link>
+            {!isFinance && <Link to="/incentives/new" className="btn btn-primary"><Plus /> New incentive</Link>}
           </>
         }
       />
       <ScProgress mode="incentive" />
       <KpiGrid cols={3}>
         <Kpi label="Approved incentive" value={moneyShort(sumBy("approved"))} sub={`${count("approved")} claims`} />
-        <Kpi label="Pending incentive" value={moneyShort(sumBy("pending_approval"))} sub={`${count("pending_approval")} waiting for an admin`} />
+        <Kpi label="Pending incentive" value={moneyShort(sumBy("pending_approval"))} sub={`${count("pending_approval")} waiting for approval`} />
         <Kpi label="Rejected" value={count("rejected")} sub="Claims" />
       </KpiGrid>
       <Panel
@@ -61,7 +62,7 @@ export default function Incentives() {
         }
       >
         {isLoading ? <LoadingRows /> : visible.length === 0 ? (
-          <Empty icon={<Coins />} title={rows.length ? "Nothing here" : "No incentives yet"} body="Claims use EXPs from approved collections." action={!rows.length && <Link to="/incentives/new" className="btn btn-primary"><Plus /> New incentive</Link>} />
+          <Empty icon={<Coins />} title={rows.length ? "Nothing here" : "No incentives yet"} body="Claims use fully collected EXPs from approved collections." action={!rows.length && !isFinance && <Link to="/incentives/new" className="btn btn-primary"><Plus /> New incentive</Link>} />
         ) : (
           <>
             <div className="scroll-thin hidden overflow-x-auto md:block">

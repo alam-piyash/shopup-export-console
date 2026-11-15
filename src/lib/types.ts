@@ -1,4 +1,4 @@
-export type AppRole = "operation" | "admin";
+export type AppRole = "operation" | "admin" | "finance";
 export type TradeStatus = "pending_approval" | "active" | "revision_pending" | "closed" | "rejected";
 export type ApprovalStatus = "pending_approval" | "approved" | "rejected" | "withdrawn";
 export type Num = number | string;
@@ -64,6 +64,10 @@ export type Trade = {
   contract_signed?: boolean;
   contract_versions?: number;
   followups_done?: number[] | null;
+  /** Approved prepaid money, settled onto EXPs (approved), and settlements awaiting approval. */
+  prepaid_received?: Num;
+  prepaid_settled?: Num;
+  prepaid_settling?: Num;
 };
 
 export type Exp = {
@@ -120,6 +124,10 @@ export type Exp = {
   gross_weight?: Num | null;
   sales_contract_no?: string;
   fields_missing?: number;
+  /** Approved collections on this EXP; pending plus approved; amount minus pending plus approved. */
+  collected_amount?: Num;
+  allocated_amount?: Num;
+  outstanding_amount?: Num;
 };
 
 export type ExpAmountChange = {
@@ -238,6 +246,8 @@ export type Activity = {
   created_at: string;
 };
 
+export type CollectionKind = "exp" | "prepaid" | "settlement";
+
 export type Collection = {
   id: string;
   code: string;
@@ -245,6 +255,9 @@ export type Collection = {
   amount: Num;
   amount_usd: Num | null;
   bank_reference: string | null;
+  /** exp: money for EXPs; prepaid: money before EXPs; settlement: prepaid money moved onto EXPs. */
+  kind: CollectionKind;
+  source_collection_id: string | null;
   status: ApprovalStatus;
   created_by: string;
   approved_by: string | null;
@@ -253,7 +266,7 @@ export type Collection = {
   is_demo: boolean;
   created_at: string;
   trades: { code: string; importer_name: string } | null;
-  collection_exps: { amount: Num; exps: { id: string; code: string; exp_serial?: string | null; exp_year?: number | null; exp_no?: string | null; awb_no?: string | null } | null }[];
+  collection_exps: { amount: Num; exps: { id: string; code: string; exp_serial?: string | null; exp_year?: number | null; exp_no?: string | null; awb_no?: string | null; amount?: Num } | null }[];
 };
 
 export type Incentive = {

@@ -73,6 +73,8 @@ function ProtectedLayout() {
   }
   if (isLoading) return <FullLoader />;
   if (!me?.role) return <NoAccess reason="Your account is signed in but has no role. Ask an admin to grant you access in Access control." />;
+  // Finance: collections and incentives only, viewing and approving (no create pages)
+  if (me.role === "finance" && !/^\/(collections|incentives)(\/(?!new$)[^/]+)?\/?$/.test(location.pathname)) return <Navigate to="/collections" replace />;
   return (
     <AppShell>
       <Suspense fallback={<div className="grid h-64 place-items-center"><Loader2 className="size-5 animate-spin text-mut" /></div>}>

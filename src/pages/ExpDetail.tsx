@@ -11,7 +11,7 @@ import { DocPanel, type DocModel } from "@/components/docs";
 import { EditExpDialog } from "@/components/expDialogs";
 import { CI_DOCS, GenerateCiDialog } from "@/components/ciGenerate";
 import { AmountChangesPanel, ChangeAmountDialog } from "@/components/expAmount";
-import { EXP_FIELDS, EXP_GROUPS, expNumber, fieldValue, isShipped, typeLabel } from "@/lib/expFields";
+import { EXP_FIELDS, EXP_GROUPS, collectionState, expNumber, fieldValue, isShipped, typeLabel } from "@/lib/expFields";
 
 function ExpFieldsPanel({ exp, onEdit }: { exp: Exp; onEdit: () => void }) {
   const dup = exp.type === "regular";
@@ -141,8 +141,10 @@ export default function ExpDetail() {
         <Kpi label="Documents final" value={`${finals}/${total}`} sub={<Progress value={(finals / total) * 100} tone={finals === total ? "ok" : "accent"} />} />
         <Kpi
           label="Collection"
-          value={exp.collection_status === "approved" ? "Collected" : exp.collection_status ? "Pending" : "Not yet"}
-          sub={exp.collection_code ? <span className="code-id">{exp.collection_code}</span> : undefined}
+          value={collectionState(exp).label}
+          sub={Number(exp.allocated_amount ?? 0) > 0 && exp.collection_status !== "approved"
+            ? <span className="num">{money(exp.collected_amount ?? 0)} collected · {money(exp.outstanding_amount ?? 0)} outstanding</span>
+            : exp.collection_code ? <span className="code-id">{exp.collection_code}</span> : undefined}
         />
       </KpiGrid>
 

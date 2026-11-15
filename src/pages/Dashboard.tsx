@@ -57,11 +57,10 @@ export default function Dashboard() {
   const hour = new Date().getHours();
   const greet = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
-  const sumOf = (arr: { amount: number | string }[]) => arr.reduce((t, e) => t + Number(e.amount || 0), 0);
   const followupSub = s.followups.slice(0, 3).map(({ t }) => `${t.code} at ${pct(t.exp_issued, t.contract_amount)}%`).join(", ");
   const tasks: { n: number; label: string; sub: string; to: string; tone: "bad" | "warn" | "ok" }[] = [
     { n: s.docsPending.length, label: "EXPs with documents pending", sub: "Shipped, shipment documents not final", to: "/exps?filter=docs_pending", tone: "warn" },
-    { n: s.uncollected.length, label: "EXPs not yet in a collection", sub: `${money(sumOf(s.uncollected))} waiting for money`, to: "/exps?filter=uncollected", tone: "warn" },
+    { n: s.uncollected.length, label: "EXPs with money outstanding", sub: `${money(s.uncollected.reduce((t, e) => t + Number(e.outstanding_amount ?? e.amount), 0))} not yet collected`, to: "/exps?filter=uncollected", tone: "warn" },
     { n: s.expiring.length, label: s.expiring.some((x) => x.d < 0) ? "Contracts expired or expiring in 30 days" : "Contracts expiring in 30 days", sub: s.expiring.slice(0, 3).map((x) => x.t.code).join(", ") || "None", to: "/trades?status=active", tone: s.expiring.some((x) => x.d < 0) ? "bad" : "warn" },
     { n: s.followups.length, label: "Shipment follow-ups due", sub: followupSub || "None", to: "/trades?status=active", tone: "warn" },
     { n: s.noShipment.length, label: "Advance EXPs waiting for shipment fields", sub: "Fill them with EXP correction", to: "/exps?filter=advance", tone: "warn" },
@@ -146,7 +145,7 @@ export default function Dashboard() {
                     actions={<Link to={`/exps/${e.id}`} className="btn btn-outline btn-sm">Review</Link>} />
                 ))}
                 {pendingCols.map((c) => (
-                  <QueueRow key={c.id} kind="Collection" code={c.code} title={`${c.trades?.code} · ${c.trades?.importer_name}`} amount={c.amount} to={`/collections/${c.id}`} who={c.is_demo ? "Demo" : profiles[c.created_by]} when={c.created_at}
+                  <QueueRow key={c.id} kind={c.kind === "prepaid" ? "Prepaid" : c.kind === "settlement" ? "Settlement" : "Collection"} code={c.code} title={`${c.trades?.code} · ${c.trades?.importer_name}`} amount={c.amount} to={`/collections/${c.id}`} who={c.is_demo ? "Demo" : profiles[c.created_by]} when={c.created_at}
                     actions={<ApproveReject label={c.code} onApprove={() => decideCol(c.id, true)} onReject={(r) => decideCol(c.id, false, r)} />} />
                 ))}
                 {pendingIncs.map((i) => (
@@ -159,7 +158,7 @@ export default function Dashboard() {
         )}
       </div>
 
-      <MonthlyBars exps={exps.data ?? []} cols={(cols.data ?? []).filter((c) => c.status === "approved")} issued={s.issued} collected={s.collected} />
+      <MonthlyBars exps={exps.data ?? []} cols={(cols.data ?? []).filter((c) => c.status === "approved" && c.kind !== "settlement")} issued={s.issued} collected={s.collected} />
 
       <div className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
         <section className="card overflow-hidden">

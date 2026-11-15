@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, Search, Wallet } from "lucide-react";
-import { useCollections, useDecide, useIsAdmin } from "@/lib/api";
+import { kindLabel, useCollections, useDecide, useIsApprover, useIsFinance } from "@/lib/api";
 import { money, moneyShort, fmtDate } from "@/lib/format";
 import type { Collection } from "@/lib/types";
 import { ApproveReject, Button, Chip, Empty, Input, Kpi, KpiGrid, LoadingRows, Money, PageHeader, Panel, Row, Segments } from "@/components/ui";
@@ -9,8 +9,15 @@ import { ScProgress } from "@/components/scProgress";
 
 type Filter = "all" | "pending_approval" | "approved" | "rejected";
 
+const expCell = (r: Collection) =>
+  r.kind === "prepaid" ? <span className="text-mut">Before EXPs</span>
+  : r.collection_exps.length === 0 ? <span className="text-mut">None</span>
+  : r.collection_exps.length === 1 ? r.collection_exps[0].exps?.code
+  : `${r.collection_exps[0]?.exps?.code ?? ""} +${r.collection_exps.length - 1}`;
+
 export default function Collections() {
-  const isAdmin = useIsAdmin();
+  const isApprover = useIsApprover();
+  const isFinance = useIsFinance();
   const [params, setParams] = useSearchParams();
   const filter = (params.get("status") as Filter) || "all";
   const setFilter = (f: Filter) => setParams(f === "all" ? {} : { status: f }, { replace: true });
@@ -27,9 +34,10 @@ export default function Collections() {
       (!q || [r.code, r.trades?.code, r.trades?.importer_name, r.bank_reference, ...r.collection_exps.map((c) => c.exps?.code)].some((v) => v?.toLowerCase().includes(ql))),
   );
   const actions = (r: Collection) =>
-    isAdmin && r.status === "pending_approval" ? <ApproveReject label={r.code} onApprove={() => decide(r.id, true)} onReject={(reason) => decide(r.id, false, reason)} /> : null;
+    isApprover && r.status === "pending_approval" ? <ApproveReject label={r.code} onApprove={() => decide(r.id, true)} onReject={(reason) => decide(r.id, false, reason)} /> : null;
+  // money received: settlements only move prepaid money onto EXPs, so they are left out of the totals
   const sumBy = (st: string, k: "amount" | "amount_usd") => {
-    const rs = rows.filter((r) => r.status === st);
+    const rs = rows.filter((r) => r.status === st && r.kind !== "settlement");
     if (k === "amount_usd" && !rs.some((r) => r.amount_usd != null)) return null;
     return rs.reduce((x, r) => x + Number(r[k] ?? 0), 0);
   };
@@ -38,17 +46,13 @@ export default function Collections() {
     <>
       <PageHeader
         title="Collections"
-        sub="Money received against EXPs. Only approved collections mark EXPs as collected."
-        actions={
-          <>
-            <Link to="/collections/new" className="btn btn-primary"><Plus /> New collection</Link>
-          </>
-        }
+        sub="Money received against EXPs or prepaid against a sales contract. Only approved collections mark EXPs as collected."
+        actions={isFinance ? undefined : <Link to="/collections/new" className="btn btn-primary"><Plus /> New collection</Link>}
       />
       <ScProgress mode="collection" />
       <KpiGrid cols={3}>
         <Kpi label="Approved" value={moneyShort(sumBy("approved", "amount"))} usdValue={sumBy("approved", "amount_usd")} sub={`${count("approved")} collections`} />
-        <Kpi label="Pending" value={moneyShort(sumBy("pending_approval", "amount"))} usdValue={sumBy("pending_approval", "amount_usd")} sub={`${count("pending_approval")} waiting for an admin`} />
+        <Kpi label="Pending" value={moneyShort(sumBy("pending_approval", "amount"))} usdValue={sumBy("pending_approval", "amount_usd")} sub={`${count("pending_approval")} waiting for approval`} />
         <Kpi label="Rejected" value={count("rejected")} sub="Collections" />
       </KpiGrid>
       <Panel
@@ -68,7 +72,7 @@ export default function Collections() {
         }
       >
         {isLoading ? <LoadingRows /> : visible.length === 0 ? (
-          <Empty icon={<Wallet />} title={rows.length ? "Nothing here" : "No collections yet"} body="Record money received and group it against the EXPs it pays for." action={!rows.length && <Link to="/collections/new" className="btn btn-primary"><Plus /> New collection</Link>} />
+          <Empty icon={<Wallet />} title={rows.length ? "Nothing here" : "No collections yet"} body="Record money received and group it against the EXPs it pays for." action={!rows.length && !isFinance && <Link to="/collections/new" className="btn btn-primary"><Plus /> New collection</Link>} />
         ) : (
           <>
             <div className="scroll-thin hidden overflow-x-auto md:block">
@@ -77,10 +81,10 @@ export default function Collections() {
                 <tbody>
                   {visible.map((r) => (
                     <tr key={r.id} className="cursor-pointer" onClick={() => navigate(`/collections/${r.id}`)}>
-                      <td className="code-id font-medium">{r.code}</td>
+                      <td><span className="code-id font-medium">{r.code}</span>{r.kind !== "exp" && <Chip label={kindLabel(r.kind)} tone={r.kind === "prepaid" ? "info" : "gray"} dot={false} className="ml-2" />}</td>
                       <td className="code-id">{r.trades?.code}</td>
                       <td className="max-w-[13rem] truncate">{r.trades?.importer_name}</td>
-                      <td className="code-id">{r.collection_exps.length === 1 ? r.collection_exps[0].exps?.code : `${r.collection_exps[0]?.exps?.code ?? ""} +${r.collection_exps.length - 1}`}</td>
+                      <td className="code-id">{expCell(r)}</td>
                       <td className="num">{money(r.amount)}</td>
                       <td className="max-w-[10rem] truncate">{r.bank_reference || <span className="text-mut">None</span>}</td>
                       <td className="num">{fmtDate(r.created_at)}</td>
@@ -94,9 +98,9 @@ export default function Collections() {
             <div className="flex flex-col gap-2.5 p-3 md:hidden">
               {visible.map((r) => (
                 <div key={r.id} className="flex cursor-pointer flex-col gap-2 rounded-xl border border-line bg-bg p-4" onClick={() => navigate(`/collections/${r.id}`)}>
-                  <div className="flex items-center justify-between"><span className="code-id font-semibold">{r.code}</span><Chip status={r.status} /></div>
+                  <div className="flex items-center justify-between"><span className="code-id font-semibold">{r.code}{r.kind !== "exp" && <span className="ml-2 text-[0.75rem] font-normal text-mut">{kindLabel(r.kind)}</span>}</span><Chip status={r.status} /></div>
                   <div className="text-[0.75rem] text-mut">{r.trades?.code} · {r.trades?.importer_name}</div>
-                  <div className="code-id text-[0.75rem] text-mut">{r.collection_exps.map((c) => c.exps?.code).join(", ")}</div>
+                  <div className="code-id text-[0.75rem] text-mut">{expCell(r)}</div>
                   <Money money={r.amount} usd={r.amount_usd} className="font-semibold" />
                   <div className="empty:hidden">{actions(r)}</div>
                 </div>

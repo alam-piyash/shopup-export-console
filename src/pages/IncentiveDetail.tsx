@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import { useDecide, useIncentives, useIsAdmin, useProfiles } from "@/lib/api";
+import { useDecide, useIncentives, useIsApprover, useIsFinance, useProfiles } from "@/lib/api";
 import { money, fmtDate } from "@/lib/format";
 import { ApproveReject, Chip, Empty, LoadingRows } from "@/components/ui";
 import { EntityDocPanel } from "@/components/entityDocs";
@@ -7,7 +7,8 @@ import { DetailHeader, ExpRowsTable, HeroCard } from "@/components/detailParts";
 
 export default function IncentiveDetail() {
   const { incentiveId = "" } = useParams();
-  const isAdmin = useIsAdmin();
+  const isApprover = useIsApprover();
+  const isFinance = useIsFinance();
   const decide = useDecide("incentive");
   const profiles = useProfiles().data ?? {};
   const { data, isLoading } = useIncentives();
@@ -26,11 +27,11 @@ export default function IncentiveDetail() {
         code={r.code}
         chips={<><Chip status={r.status} />{r.is_demo && <Chip label="Demo" tone="gray" dot={false} />}</>}
         meta={<>{trades.map((t, i) => <span key={t?.code}>{i > 0 && ", "}<span className="code-id">{t?.code}</span> · {t?.importer_name}</span>)} · Submitted {fmtDate(r.created_at)}{who ? ` by ${who}` : ""}</>}
-        actions={isAdmin && pending ? <ApproveReject label={r.code} onApprove={() => decide(r.id, true)} onReject={(reason) => decide(r.id, false, reason)} /> : undefined}
+        actions={isApprover && pending ? <ApproveReject label={r.code} onApprove={() => decide(r.id, true)} onReject={(reason) => decide(r.id, false, reason)} /> : undefined}
       />
 
       {r.rejection_reason && <div className="banner chip-bad">Rejected: {r.rejection_reason}</div>}
-      {pending && !isAdmin && <div className="banner chip-warn">Waiting for an admin to approve.</div>}
+      {pending && !isApprover && <div className="banner chip-warn">Waiting for Admin or Finance to approve.</div>}
 
       <HeroCard
         label="Incentive"
@@ -45,7 +46,7 @@ export default function IncentiveDetail() {
         ]}
       />
 
-      <EntityDocPanel entityType="incentive" entityId={r.id} folder="incentives" hint="Add a new version each time a copy comes back. Mark final to close a document." />
+      <EntityDocPanel entityType="incentive" entityId={r.id} folder="incentives" readOnly={isFinance} hint="Add a new version each time a copy comes back. Mark final to close a document." />
 
       <ExpRowsTable
         title="EXPs in this claim"

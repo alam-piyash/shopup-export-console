@@ -5,7 +5,7 @@ import * as P from "@radix-ui/react-popover";
 import * as D from "@radix-ui/react-dialog";
 import { ArrowLeftRight, Bell, BookUser, Coins, FileStack, LayoutDashboard, LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Search, ShieldCheck, Sun, Wallet, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { actionLabel, actionTone, useActivity, useAllExps, useMe, usePendingCounts, useTrades } from "@/lib/api";
+import { actionLabel, actionTone, roleLabel, useActivity, useAllExps, useMe, usePendingCounts, useTrades } from "@/lib/api";
 import { timeAgo } from "@/lib/format";
 import type { Me } from "@/lib/types";
 import { Avatar, cn } from "./ui";
@@ -20,6 +20,10 @@ const NAV = [
   { to: "/incentives", label: "Incentives", icon: Coins, key: "incentives" },
   { to: "/masters", label: "Masters", icon: BookUser, key: null },
 ] as const;
+
+/** Finance sees only these pages, and pending counts for these approvals. */
+export const FINANCE_PATHS: string[] = ["/collections", "/incentives"];
+const FINANCE_KEYS = ["collections", "incentives"];
 
 export function useTheme() {
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
@@ -53,7 +57,10 @@ function Brand({ collapsed }: { collapsed?: boolean }) {
 
 function NavList({ me, onNavigate, collapsed }: { me: Me | null | undefined; onNavigate?: () => void; collapsed?: boolean }) {
   const isAdmin = me?.role === "admin";
-  const { data: counts } = usePendingCounts(isAdmin);
+  const isFinance = me?.role === "finance";
+  const { data: counts } = usePendingCounts(isAdmin || isFinance);
+  const nav = isFinance ? NAV.filter((n) => FINANCE_PATHS.includes(n.to)) : NAV;
+  const badgeFor = (key: string | null) => (key && (isAdmin || (isFinance && FINANCE_KEYS.includes(key))) ? counts?.[key as keyof typeof counts] : undefined);
   const item = (to: string, label: string, Icon: typeof Bell, badge?: number, end?: boolean) => (
     <NavLink
       key={to}
@@ -82,7 +89,7 @@ function NavList({ me, onNavigate, collapsed }: { me: Me | null | undefined; onN
   return (
     <nav className="flex flex-col gap-0.5">
       {!collapsed && <div className="px-2.5 pb-1.5 text-[0.6875rem] font-medium text-mut">Workspace</div>}
-      {NAV.map((n) => item(n.to, n.label, n.icon, isAdmin && n.key ? counts?.[n.key] : undefined, n.to === "/"))}
+      {nav.map((n) => item(n.to, n.label, n.icon, badgeFor(n.key), n.to === "/"))}
       {isAdmin && (
         <>
           {collapsed ? <div className="mx-auto my-2 h-px w-6 bg-line" /> : <div className="px-2.5 pb-1.5 pt-5 text-[0.6875rem] font-medium text-mut">Admin</div>}
@@ -108,7 +115,7 @@ function UserCard({ me, collapsed }: { me: Me | null | undefined; collapsed?: bo
       <Avatar name={me?.full_name || me?.email} src={me?.avatar_url} size={30} />
       <div className="min-w-0 flex-1">
         <div className="truncate text-[0.8125rem] font-medium">{me?.full_name || me?.email}</div>
-        <div className="text-[0.75rem] text-mut">{me?.role === "admin" ? "Admin" : me?.role === "operation" ? "Operation" : "No role"}</div>
+        <div className="text-[0.75rem] text-mut">{roleLabel(me?.role)}</div>
       </div>
       <button className="btn btn-ghost btn-icon h-8 w-8" onClick={signOut} aria-label="Sign out" title="Sign out">
         <LogOut />
@@ -119,11 +126,13 @@ function UserCard({ me, collapsed }: { me: Me | null | undefined; collapsed?: bo
 
 function Notifications({ me }: { me: Me | null | undefined }) {
   const isAdmin = me?.role === "admin";
-  const { data: counts } = usePendingCounts(isAdmin);
+  const isFinance = me?.role === "finance";
+  const { data: counts } = usePendingCounts(isAdmin || isFinance);
   const { data: recent } = useActivity(10);
   const { data: trades } = useTrades();
-  const due = (trades ?? []).filter((t) => t.status === "active" && followupState(t).some((c) => c.due));
-  const adminTotal = isAdmin ? (counts?.trades ?? 0) + (counts?.collections ?? 0) + (counts?.incentives ?? 0) + (counts?.exp_amounts ?? 0) : 0;
+  const due = isFinance ? [] : (trades ?? []).filter((t) => t.status === "active" && followupState(t).some((c) => c.due));
+  const adminTotal = isAdmin ? (counts?.trades ?? 0) + (counts?.collections ?? 0) + (counts?.incentives ?? 0) + (counts?.exp_amounts ?? 0)
+    : isFinance ? (counts?.collections ?? 0) + (counts?.incentives ?? 0) : 0;
   const total = adminTotal + due.length;
   return (
     <P.Root>
@@ -135,15 +144,15 @@ function Notifications({ me }: { me: Me | null | undefined }) {
       </P.Trigger>
       <P.Portal>
         <P.Content align="end" sideOffset={8} className="z-50 w-[21.25rem] max-w-[calc(100vw-24px)] animate-in rounded-xl border border-line bg-surface shadow-2xl">
-          {isAdmin && (
+          {(isAdmin || isFinance) && (
             <div className="border-b border-line p-4">
               <div className="lbl mb-2">Awaiting your approval</div>
               {adminTotal === 0 ? (
                 <p className="text-[0.8125rem] text-mut">Nothing pending.</p>
               ) : (
                 <div className="flex flex-col gap-1.5 text-[0.8438rem]">
-                  {counts?.trades ? <Link to="/trades?status=awaiting" className="flex justify-between hover:underline"><span>Trades and amendments</span><span className="num">{counts.trades}</span></Link> : null}
-                  {counts?.exp_amounts ? <Link to="/exps?filter=amount_pending" className="flex justify-between hover:underline"><span>EXP amount changes</span><span className="num">{counts.exp_amounts}</span></Link> : null}
+                  {isAdmin && counts?.trades ? <Link to="/trades?status=awaiting" className="flex justify-between hover:underline"><span>Trades and amendments</span><span className="num">{counts.trades}</span></Link> : null}
+                  {isAdmin && counts?.exp_amounts ? <Link to="/exps?filter=amount_pending" className="flex justify-between hover:underline"><span>EXP amount changes</span><span className="num">{counts.exp_amounts}</span></Link> : null}
                   {counts?.collections ? <Link to="/collections?status=pending_approval" className="flex justify-between hover:underline"><span>Collections</span><span className="num">{counts.collections}</span></Link> : null}
                   {counts?.incentives ? <Link to="/incentives?status=pending_approval" className="flex justify-between hover:underline"><span>Incentives</span><span className="num">{counts.incentives}</span></Link> : null}
                 </div>
@@ -194,13 +203,18 @@ function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (
   const [q, setQ] = useState("");
   const { data: trades } = useTrades();
   const { data: exps } = useAllExps();
+  const isFinance = useMe().data?.role === "finance";
   useEffect(() => { if (!open) setQ(""); }, [open]);
   const results = useMemo(() => {
     const s = q.trim().toLowerCase();
+    if (isFinance) {
+      const fp = NAV.filter((n) => FINANCE_PATHS.includes(n.to)).map((n) => ({ label: n.label, sub: "Go to page", to: n.to }));
+      return s ? fp.filter((r) => r.label.toLowerCase().includes(s)) : fp;
+    }
     const pages = [
       { label: "Create trade", sub: "New sales contract", to: "/trades/new" },
       { label: "New collection", sub: "Record money received", to: "/collections/new" },
-      { label: "New incentive", sub: "Claim from collected EXPs", to: "/incentives/new" },
+      { label: "New incentive", sub: "Claim from fully collected EXPs", to: "/incentives/new" },
       ...NAV.map((n) => ({ label: n.label, sub: "Go to page", to: n.to })),
     ];
     const t = (trades ?? []).map((x) => ({ label: `${x.code} · ${x.importer_name}`, sub: `SC ${x.sales_contract_no} · ${x.products}`, to: `/trades/${x.id}` }));
@@ -208,7 +222,7 @@ function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (
     const all = [...pages, ...t, ...e];
     if (!s) return all.slice(0, 9);
     return all.filter((r) => (r.label + " " + r.sub).toLowerCase().includes(s)).slice(0, 12);
-  }, [q, trades, exps]);
+  }, [q, trades, exps, isFinance]);
   const [idx, setIdx] = useState(0);
   useEffect(() => setIdx(0), [q]);
   const go = (to: string) => { onOpenChange(false); navigate(to); };

@@ -3,11 +3,14 @@ import { useRefresh } from "@/lib/api";
 import { DocList, DocPanel } from "./docs";
 
 /** Document panel for one record of a module (collection, incentive, amendment, amount change). */
-export function EntityDocPanel({ entityType, entityId, folder, title = "Documents", hint, stages }: { entityType: EntityType; entityId: string; folder: string; title?: string; hint?: string; stages?: string[] }) {
+export function EntityDocPanel({ entityType, entityId, folder, title = "Documents", hint, stages, readOnly }: { entityType: EntityType; entityId: string; folder: string; title?: string; hint?: string; stages?: string[]; readOnly?: boolean }) {
   const refresh = useRefresh();
   const { data, isLoading } = useEntityDocs(entityType, [entityId]);
   if (isLoading) return <section className="card p-5 text-[0.8125rem] text-mut">Loading documents</section>;
-  return <DocPanel title={title} docs={entityDocModels(data, { entityId, folder, refresh, stages })} hint={hint} />;
+  const docs = entityDocModels(data, { entityId, folder, refresh, stages });
+  // view only (Finance): files open, but nothing can be added or closed
+  const shown = readOnly ? docs.map((d) => ({ ...d, disabled: "View only", finalBlocked: "View only" })) : docs;
+  return <DocPanel title={title} docs={shown} hint={readOnly ? "View only." : hint} />;
 }
 
 /** Cards only, for use inside another card (amendments). */

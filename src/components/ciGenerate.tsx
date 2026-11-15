@@ -31,15 +31,17 @@ async function loadSources(exp: Exp) {
   const [{ data: trade, error: te }, { data: items, error: ie }, { data: links }] = await Promise.all([
     supabase.from("trades").select("code, sales_contract_no, contract_date, exporter, exporter_address, importer_name, buyer_address, buyer_cr_no, buyer_vat_no, departure_port, country_of_destination, country_of_origin, shipping_mark, products").eq("id", exp.trade_id).single(),
     supabase.from("trade_items").select("description, quantity_kg").eq("trade_id", exp.trade_id).order("sort_order"),
-    supabase.from("collection_exps").select("collection_id, collections(status, created_at)").eq("exp_id", exp.id),
+    supabase.from("collection_exps").select("collection_id, collections(status, created_at, kind, source_collection_id)").eq("exp_id", exp.id),
   ]);
   if (te) throw te;
   if (ie) throw ie;
   if (!trade) throw new Error("Trade not found for this EXP");
   // TT voucher on the EXP's collection (pending or approved), newest first
-  const cols = ((links ?? []) as unknown as { collection_id: string; collections: { status: string; created_at: string } | null }[])
+  // a settlement carries no files: read them from the prepaid collection it came from
+  const cols = ((links ?? []) as unknown as { collection_id: string; collections: { status: string; created_at: string; kind?: string; source_collection_id?: string | null } | null }[])
     .filter((l) => l.collections && l.collections.status !== "rejected")
-    .sort((a, b) => (b.collections!.created_at > a.collections!.created_at ? 1 : -1));
+    .sort((a, b) => (b.collections!.created_at > a.collections!.created_at ? 1 : -1))
+    .map((l) => (l.collections?.kind === "settlement" && l.collections.source_collection_id ? { ...l, collection_id: l.collections.source_collection_id } : l));
   // field 50K is on the Swift Message (MT103); older collections carry it on the TT Voucher
   let tt: { path: string; name: string } | null = null;
   let notify: string[] | null = null;
