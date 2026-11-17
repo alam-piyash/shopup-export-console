@@ -1,0 +1,104 @@
+import { useState } from "react";
+import { Link, useNavigate, useSearchParams } from "@/lib/router";
+import { Coins, Plus, Search } from "lucide-react";
+import { useDecide, useIncentives, useIsApprover, useIsFinance } from "@/lib/api";
+import { money, moneyShort, fmtDate } from "@/lib/format";
+import type { Incentive } from "@/lib/types";
+import { ApproveReject, Button, Chip, Empty, Input, Kpi, KpiGrid, LoadingRows, Money, PageHeader, Panel, Row, Segments, cn } from "@/components/ui";
+import { ScProgress } from "@/components/scProgress";
+
+type Filter = "all" | "pending_approval" | "approved" | "rejected";
+
+export default function Incentives() {
+  const isApprover = useIsApprover();
+  const isFinance = useIsFinance();
+  const [params, setParams] = useSearchParams();
+  const filter = (params.get("status") as Filter) || "all";
+  const setFilter = (f: Filter) => setParams(f === "all" ? {} : { status: f }, { replace: true });
+  const navigate = useNavigate();
+  const [q, setQ] = useState("");
+  const { data, isLoading } = useIncentives();
+  const decide = useDecide("incentive");
+  const rows = data ?? [];
+  const count = (s: string) => rows.filter((r) => r.status === s).length;
+  const tradesOf = (r: Incentive) => [...new Set(r.incentive_exps.map((e) => e.exps?.trades?.code))].join(", ");
+  const actions = (r: Incentive) =>
+    isApprover && r.status === "pending_approval" ? <ApproveReject label={r.code} onApprove={() => decide(r.id, true)} onReject={(reason) => decide(r.id, false, reason)} /> : null;
+  const sumBy = (st: string) => rows.filter((r) => r.status === st).reduce((x, r) => x + Number(r.incentive_amount ?? 0), 0);
+  const ql = q.toLowerCase();
+  const visible = rows.filter((r) => (filter === "all" || r.status === filter) && (!q || [r.code, tradesOf(r), ...r.incentive_exps.map((e) => e.exps?.code)].some((v) => v?.toLowerCase().includes(ql))));
+
+  return (
+    <>
+      <PageHeader
+        title="Incentives"
+        sub="Export incentive claims built from collected EXPs. FOB = net proceed minus freight."
+        actions={
+          <>
+            {!isFinance && <Link to="/incentives/new" className="btn btn-primary"><Plus /> New incentive</Link>}
+          </>
+        }
+      />
+      <ScProgress mode="incentive" />
+      <KpiGrid cols={3}>
+        <Kpi label="Approved incentive" value={moneyShort(sumBy("approved"))} sub={`${count("approved")} claims`} />
+        <Kpi label="Pending incentive" value={moneyShort(sumBy("pending_approval"))} sub={`${count("pending_approval")} waiting for approval`} />
+        <Kpi label="Rejected" value={count("rejected")} sub="Claims" />
+      </KpiGrid>
+      <Panel
+        title={
+          <Segments value={filter} onChange={setFilter} options={[
+            { value: "all", label: "All", count: rows.length },
+            { value: "pending_approval", label: "Awaiting", count: count("pending_approval") },
+            { value: "approved", label: "Approved", count: count("approved") },
+            { value: "rejected", label: "Rejected", count: count("rejected") },
+          ]} />
+        }
+        right={
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-mut" />
+            <Input className="pl-9" placeholder="Search code, trade, EXP" value={q} onChange={(e) => setQ(e.target.value)} />
+          </div>
+        }
+      >
+        {isLoading ? <LoadingRows /> : visible.length === 0 ? (
+          <Empty icon={<Coins />} title={rows.length ? "Nothing here" : "No incentives yet"} body="Claims use fully collected EXPs from approved collections." action={!rows.length && !isFinance && <Link to="/incentives/new" className="btn btn-primary"><Plus /> New incentive</Link>} />
+        ) : (
+          <>
+            <div className="scroll-thin hidden overflow-x-auto md:block">
+              <table className="tbl min-w-[64rem]">
+                <thead><tr>{["Code", "Trades", "EXPs", "EXP amount", "FOB", "Rate", "Incentive", "Date", "Status", ""].map((h, i) => <th key={i}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {visible.map((r) => (
+                    <tr key={r.id} className="cursor-pointer" onClick={() => navigate(`/incentives/${r.id}`)}>
+                      <td className="code-id font-medium">{r.code}</td>
+                      <td className="num">{tradesOf(r)}</td>
+                      <td className="num">{r.incentive_exps.length}</td>
+                      <td className="num">{money(r.exp_amount)}</td>
+                      <td className="num">{money(r.fob)}</td>
+                      <td className="num">{Number(r.incentive_pct)}%</td>
+                      <td className="num font-medium">{money(r.incentive_amount)}</td>
+                      <td className="num">{fmtDate(r.created_at)}</td>
+                      <td><Chip status={r.status} /></td>
+                      <td><div className="flex justify-end gap-2">{actions(r)}</div></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex flex-col gap-2.5 p-3 md:hidden">
+              {visible.map((r) => (
+                <div key={r.id} className="flex cursor-pointer flex-col gap-2 rounded-xl border border-line bg-bg p-4" onClick={() => navigate(`/incentives/${r.id}`)}>
+                  <div className="flex items-center justify-between"><span className="code-id font-semibold">{r.code}</span><Chip status={r.status} /></div>
+                  <div className="text-[0.75rem] text-mut">{tradesOf(r)} · FOB {money(r.fob)} at {Number(r.incentive_pct)}%</div>
+                  <div className="num font-semibold">{money(r.incentive_amount)}</div>
+                  <div className="empty:hidden">{actions(r)}</div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </Panel>
+    </>
+  );
+}

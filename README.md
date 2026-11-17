@@ -1,81 +1,84 @@
 # ShopUp Export Console
 
-Internal tool for ShopUp's export business: trades (sales contracts), EXPs per shipment with six tracked documents, contract amendments, collections and export incentives, with admin approvals and a full activity trail.
+Trade lifecycle management for ShopUp's export business: trades (sales contracts), EXPs per
+shipment with their documents, contract amendments, collections and export incentives, with
+approvals and a full activity trail. Supplier payments and expenses stay in CRT; GRN stays in
+ShopUp's WMS and OMS.
 
-Stack: React + Vite + TypeScript + Tailwind on the front end, Supabase (Postgres, Auth with Google, Storage) on the back end, deployed as a static site on Vercel. All business rules live in the database as checked functions with Row Level Security, so the browser can never bypass them.
+## Architecture
 
-## What's inside
-
-| Area | What it does |
-|---|---|
-| Overview | KPIs, money flow (contracted, EXP issued, collected, incentive), needs-attention list, contracts expiring soon, admin approval queue, recent activity, top buyers |
-| Trades | Create from a sales contract (items, buyer, notify parties, bank, contract copy). Admin approves or rejects. Close when every EXP is closed. CSV export |
-| Amendments | Revise an active trade: new amount or item lines, expiry, timeline, open EXP amounts. Admin approves (applied atomically) or rejects. Submitter can withdraw |
-| EXPs | One per shipment, regular or advance. Total can never exceed the contract. Six documents: upload, mark final, auto close at 6/6 and lock the amount. Cross-trade EXP list with filters |
-| Collections | Amount received must equal the selected EXPs exactly (auto match helper). PRC, Ka Form, Swift Copy, TT Voucher required. Admin approves |
-| Incentives | From EXPs in approved collections. FOB = net proceed minus freight, incentive = FOB x %. Eight documents required. Admin approves |
-| Access control | Only your Google Workspace domain can sign in. First sign in gets Operation. Pre-assign Admin or Operation by email. Last admin is protected. Remove demo data |
-| Everywhere | Ctrl K search, notifications, dark and light mode, mobile layout, BDT with lakh/crore grouping, optional USD alongside |
-
-## Setup (about 15 minutes)
-
-### 1. Supabase project
-
-1. Create a project at https://supabase.com (region Singapore is closest to Dhaka).
-2. Apply every file in `supabase/migrations/` in filename order (Supabase MCP `apply_migration` or `supabase db push`). See DEPLOY.md and CLAUDE.md.
-3. Optional: run `supabase/seed_demo.sql` for sample data (admins can remove it later from Access control).
-4. If your bootstrap admin or domain differs, run:
-   ```sql
-   update public.app_settings set allowed_domain = 'shopup.org', bootstrap_admin_email = 'tasnim.piyash@shopup.org';
-   ```
-   The bootstrap email always becomes Admin on first sign in. If no admin exists yet, the first person to sign in becomes Admin.
-
-### 2. Google sign in
-
-1. Google Cloud Console > APIs & Services > Credentials > **Create OAuth client ID** (Web application).
-2. Authorized redirect URI: `https://<your-project-ref>.supabase.co/auth/v1/callback`
-3. In Supabase: **Authentication > Sign In / Providers > Google**, enable it and paste the Client ID and Secret.
-4. In Supabase: **Authentication > URL Configuration**
-   - Site URL: your Vercel URL, e.g. `https://shopup-export-console.vercel.app`
-   - Redirect URLs: add `https://shopup-export-console.vercel.app/**` and `http://localhost:5173/**`
-
-The app asks Google for the `shopup.org` workspace, and the database refuses any other domain, so outside accounts can't get in.
-
-### 3. Deploy on Vercel
-
-1. Push this folder to a GitHub repo (or run `npx vercel` inside it).
-2. Import it in Vercel. Framework preset: **Vite** (already set in `vercel.json`).
-3. Add environment variables (Supabase > Project Settings > API):
-   - `VITE_SUPABASE_URL` = `https://<ref>.supabase.co`
-   - `VITE_SUPABASE_ANON_KEY` = the anon public key
-   - `VITE_ALLOWED_DOMAIN` = `shopup.org`
-4. Deploy. Put the final URL back into Supabase URL Configuration (step 2.4).
-
-### 4. Run locally
-
-```bash
-cp .env.example .env   # fill in the values
-npm install
-npm run dev            # http://localhost:5173
+```
+browser ── Next.js (web/) ──► /api/* ──► Go API (api/) ──► Postgres (Supabase)
+   │                                         │                 business functions, RLS
+   └── Google sign-in (Supabase Auth)        └── Supabase Storage (signed links)
 ```
 
-## Rules enforced by the database
+| Part | Stack | Folder |
+| --- | --- | --- |
+| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind 3, TanStack Query | `web/` |
+| Backend | Go 1.24, chi, lib/pq, golang-jwt | `api/` |
+| Database | Postgres on Supabase: tables, views, RLS, security-definer business functions | `supabase/migrations/` |
+| Sign-in and files | Supabase Auth (Google, shopup.org and silq.net only), Supabase Storage (private bucket) | |
+| Hosting | One Vercel project with two Services: `web` at `/`, `api` at `/api` | `vercel.json` |
 
-- Writes only happen through security-definer functions; tables are read-only for signed-in members.
-- EXP total per trade can never exceed the contract amount (checked on insert, update and amendment approval).
-- A closed EXP's amount is locked. Advance EXPs need a shipment ID before documents can be uploaded.
-- An EXP can be in only one pending or approved collection, and one pending or approved incentive.
-- Collection amount must equal the selected EXPs to the paisa; incentives only use EXPs from approved collections.
-- One pending amendment per trade; amendment numbers are unique per trade.
-- Every action is written to `activity_log`. Files live in a private `documents` bucket and open through short-lived signed links.
+**Where the rules live.** The business rules (EXP numbering and uniqueness, locked fields,
+contract limits, payment allocation, approvals, document versions, activity log) are Postgres
+functions in `supabase/migrations/`. The Go API verifies the user's token, then runs every request
+in a transaction that acts as that user (`role authenticated` plus the JWT claims), so the same
+RLS policies and functions apply as before. The API layer is deliberately thin: moving a rule
+from SQL into Go later is a change inside one handler.
+
+API reference: [docs/API.md](docs/API.md). Deploying: [DEPLOY.md](DEPLOY.md).
+
+## Run locally
+
+Needs Go 1.24+, Node 22+ and Postgres.
+
+```bash
+# 1. API
+cd api
+cp .env.example .env        # point DATABASE_URL at a database with the migrations applied
+set -a; . ./.env; set +a
+go run ./cmd/api            # http://127.0.0.1:8080/api/health
+
+# 2. Frontend (another terminal)
+cd web
+cp .env.example .env.local  # Supabase URL and anon key for sign-in, API_DEV_URL=http://127.0.0.1:8080
+npm ci
+npm run dev                 # http://localhost:3000
+```
+
+In development Next.js forwards `/api/*` to `API_DEV_URL`. On Vercel the Services rewrite in
+`vercel.json` sends `/api/*` to the Go service.
+
+### Local test database
+
+The Go integration test runs the full trade flow (masters, trade, approval, signed contract,
+EXP, 8 documents and auto close, follow-up, collection, incentive, access checks) through the
+HTTP API against a real Postgres:
+
+```bash
+# a database with Supabase's auth/storage schemas (or local stubs) and every migration applied,
+# plus the bootstrap admin in auth.users
+TEST_DATABASE_URL='postgres://postgres:local@localhost:5432/export_local?sslmode=disable' \
+  go test ./...
+```
+
+Without `TEST_DATABASE_URL` the integration test is skipped and only the unit tests run
+(token verification, storage paths).
 
 ## Project layout
 
 ```
-supabase/migrations/     database migrations (source of truth)
-supabase/schema.sql      original single-file schema, reference only
-supabase/seed_demo.sql   optional demo data
-src/lib                  supabase client, data hooks, formatting, types
-src/components           shell, UI kit, file upload, items editor, EXP dialogs
-src/pages                one file per screen
+api/cmd/api              Go entrypoint (HTTP server, reads PORT)
+api/internal/auth        Supabase token verification (JWKS, HS256, Auth fallback)
+api/internal/db          per-user transactions, JSON queries, business function calls
+api/internal/httpapi     routes: reads.go, writes.go, files.go
+api/internal/storage     signed upload and download links
+web/src/app              Next.js routes (one page.tsx per screen)
+web/src/views            screens
+web/src/components       shell, UI kit, documents, dialogs
+web/src/lib              API client (http.ts), data hooks (api.ts), routing helpers, formatting
+supabase/migrations      database schema and business functions (source of truth)
+docs/API.md              endpoint reference
 ```
