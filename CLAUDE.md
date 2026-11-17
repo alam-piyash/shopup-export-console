@@ -14,16 +14,25 @@ All accounts belong to alam.piiyash@gmail.com.
 | Piece | Where |
 | --- | --- |
 | Code | GitHub `alam-piyash/shopup-export-console`, branch `main` |
-| Frontend | React 18, Vite 5, TypeScript, Tailwind 3, TanStack Query, react-router 6 |
+| Frontend | `web/`: Next.js 16 (App Router), React 19, TypeScript, Tailwind 3, TanStack Query |
+| Backend | `api/`: Go 1.24 (chi, lib/pq, golang-jwt), REST under `/api`, see docs/API.md |
 | Database, auth, files | Supabase project `shopup-export` (ref `jnjpwsjyswnsrendjodn`, region ap-southeast-1) |
-| Hosting | Vercel project `shopup-export-console`, linked to the GitHub repo |
+| Hosting | Vercel project `shopup-export-console` with two Services (`web` at `/`, `api` at `/api`), linked to the GitHub repo |
+
+The browser uses Supabase only for Google sign-in. Every read and write goes through the Go API,
+which runs each request as the signed-in user (role `authenticated` + JWT claims) so RLS and the
+database functions still decide everything.
 
 Lovable is retired. Never use the Lovable "ShopUp Export" project or Lovable Cloud.
 
 ## Change loop (follow every time)
 
 1. Create a branch from `main` (for example `feat/short-name` or `fix/short-name`).
-2. Edit code. Run `npm ci` once, then `npm run build` (typecheck plus build) before every commit. It must pass.
+2. Edit code. Before every commit both must pass:
+   - `cd web && npm ci && npm run build` (typecheck plus Next.js build)
+   - `cd api && go vet ./... && go test ./...` (set `TEST_DATABASE_URL` to also run the end-to-end test)
+   A new write in the frontend needs its route in `api/internal/httpapi/writes.go` (one line per database function)
+   and a line in docs/API.md.
 3. Commit and push the branch. Vercel builds a preview deploy for the branch automatically.
 4. Open the preview URL and check the changed screens. Preview deploys use the same Supabase project, so do not create junk data there; use demo data or clean up after.
 5. Open a pull request into `main`, then merge. Vercel deploys `main` to production.
@@ -55,7 +64,8 @@ opened through short-lived signed URLs.
 ## Secrets
 
 - Never commit secrets. `.env*.local` is git-ignored.
-- Frontend env vars live only in Vercel: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_ALLOWED_DOMAIN`.
+- Env vars live only in Vercel. Frontend: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_ALLOWED_DOMAIN`.
+  API: `DATABASE_URL` (secret), `SUPABASE_URL`, `SUPABASE_ANON_KEY`, optional `SUPABASE_JWT_SECRET`. See DEPLOY.md.
 - The Google OAuth client secret lives only in Supabase Auth settings.
 - Never use or print the Supabase service role key in the frontend.
 

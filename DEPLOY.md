@@ -4,53 +4,52 @@
 
 | Event | Result |
 | --- | --- |
-| Push to any branch except `main` | Vercel preview deploy (unique URL per branch and commit) |
+| Push to any branch except `main` | Vercel preview deploy (web and API together, one URL) |
 | Merge or push to `main` | Vercel production deploy at https://shopup-export-console.vercel.app |
 
-Nobody uploads files by hand. Vercel project: `alampiiyash-1378s-projects/shopup-export-console`, connected to GitHub `alam-piyash/shopup-export-console`. Vercel runs `npm run build` and serves `dist/` (see `vercel.json`).
+Functions run in Singapore (`sin1`), next to the Supabase database (ap-southeast-1).
+`vercel.json` defines two Vercel Services in one project: `web` (Next.js, `web/`) serves every
+path, `api` (Go, `api/`) serves `/api/*`. Services and the Go runtime are in Beta on all Vercel
+plans. If a build fails with a framework error, set Project Settings > Build and Deployment >
+Framework Preset to **Other** (the services define their own frameworks).
 
 ## Environment variables (Vercel, all environments)
 
-| Name | Value |
-| --- | --- |
-| `VITE_SUPABASE_URL` | `https://jnjpwsjyswnsrendjodn.supabase.co` |
-| `VITE_SUPABASE_ANON_KEY` | Supabase publishable (anon) key, from Supabase > Project Settings > API |
-| `VITE_ALLOWED_DOMAIN` | `shopup.org` |
+| Name | Used by | Value |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | web | `https://jnjpwsjyswnsrendjodn.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | web | Supabase publishable (anon) key |
+| `NEXT_PUBLIC_ALLOWED_DOMAIN` | web | `shopup.org,silq.net` |
+| `DATABASE_URL` | api | Supabase > Connect > Transaction pooler (port 6543), with the database password |
+| `SUPABASE_URL` | api | same as `NEXT_PUBLIC_SUPABASE_URL` |
+| `SUPABASE_ANON_KEY` | api | same as `NEXT_PUBLIC_SUPABASE_ANON_KEY` |
+| `SUPABASE_JWT_SECRET` | api | optional, only for legacy HS256 tokens |
 
-These are baked in at build time, so redeploy after changing them.
+`NEXT_PUBLIC_*` values are baked in at build time, so redeploy after changing them. The old
+`VITE_*` variables are no longer used and can be deleted once the new build is live.
+`DATABASE_URL` is a secret: add it as a sensitive variable and never commit it.
 
 ## Database
 
-Migrations in `supabase/migrations/` are applied in filename order. To set up a fresh project,
-apply them all in order. To change the schema, add a new migration file (see CLAUDE.md).
+Migrations in `supabase/migrations/` are applied in filename order. The Go API needs no schema
+change: it calls the same functions the old frontend called.
 
 ## Google sign-in
 
-Google OAuth client (Google Cloud > Google Auth Platform > Clients, type Web application):
+Unchanged. Supabase > Authentication > URL Configuration must list the app URLs:
 
-- Authorized JavaScript origins: `https://shopup-export-console.vercel.app`, `http://localhost:5173`
-- Authorized redirect URI: `https://jnjpwsjyswnsrendjodn.supabase.co/auth/v1/callback`
+- Site URL: `https://shopup-export-console.vercel.app`
+- Redirect URLs: `https://shopup-export-console.vercel.app/**`,
+  `https://shopup-export-console-*-alampiiyash-1378s-projects.vercel.app/**` (previews),
+  `http://localhost:3000/**` (local Next.js)
 
-Supabase > Authentication:
+## Check a deploy
 
-- Sign In / Providers > Google: enabled, with the Client ID and Client Secret from Google
-- URL Configuration > Site URL: `https://shopup-export-console.vercel.app`
-- URL Configuration > Redirect URLs:
-  - `https://shopup-export-console.vercel.app/**`
-  - `https://shopup-export-console-*-alampiiyash-1378s-projects.vercel.app/**` (branch previews)
-  - `http://localhost:5173/**`
-
-## Local development
-
-```bash
-npm ci
-cp .env.example .env.local   # fill in the three values above
-npm run dev                  # http://localhost:5173
-npm run build                # must pass before every commit
-```
+1. `https://<deploy-url>/api/health` returns `{"status":"ok"}` (database reachable).
+2. Sign in, open Dashboard, Trades, an EXP and Collections.
+3. Upload a document version and open it (storage links).
 
 ## Rollback
 
-In Vercel > Deployments, open the last good production deploy and choose Promote to Production
-(instant rollback). Database migrations are not rolled back automatically; write a new migration
-that reverses the change.
+Vercel > Deployments > last good production deploy > Promote to Production. Database
+migrations are not rolled back automatically; write a new migration that reverses the change.
