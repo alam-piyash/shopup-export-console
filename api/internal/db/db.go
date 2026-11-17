@@ -42,14 +42,14 @@ type Arg struct {
 func Open(ctx context.Context, url string) (*DB, error) {
 	pool, err := sql.Open("postgres", url)
 	if err != nil {
-		return nil, err
+		return nil, redact(err, url)
 	}
 	// Serverless instances stay small; the Supabase pooler does the real pooling.
 	pool.SetMaxOpenConns(5)
 	pool.SetMaxIdleConns(2)
 	pool.SetConnMaxIdleTime(60 * time.Second)
 	if err := pool.PingContext(ctx); err != nil {
-		return nil, fmt.Errorf("connect to database: %w", err)
+		return nil, fmt.Errorf("connect to database: %w", redact(err, url))
 	}
 	d := &DB{pool: pool}
 	if err := d.loadFunctions(ctx); err != nil {
@@ -235,6 +235,22 @@ func param(n int, typ string, v any) (string, any, error) {
 	default:
 		return "", nil, fmt.Errorf("unsupported value for %s", typ)
 	}
+}
+
+// redact keeps the connection string (and its password) out of error messages and logs.
+func redact(err error, url string) error {
+	if err == nil {
+		return nil
+	}
+	msg := err.Error()
+	if url != "" && strings.Contains(msg, url) {
+		msg = strings.ReplaceAll(msg, url, "[DATABASE_URL]")
+	}
+	// URL parse errors quote the connection string; never pass those through.
+	if strings.Contains(msg, "://") {
+		return errors.New("DATABASE_URL is not a valid connection string (check that the password has no brackets or unencoded special characters)")
+	}
+	return errors.New(msg)
 }
 
 func quoteIdent(s string) string { return `"` + strings.ReplaceAll(s, `"`, `""`) + `"` }
