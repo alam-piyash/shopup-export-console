@@ -7,6 +7,7 @@
 | Push to any branch except `main` | Vercel preview deploy (web and API together, one URL) |
 | Merge or push to `main` | Vercel production deploy at https://shopup-export-console.vercel.app |
 
+Functions run in Singapore (`sin1`), next to the Supabase database (ap-southeast-1).
 `vercel.json` defines two Vercel Services in one project: `web` (Next.js, `web/`) serves every
 path, `api` (Go, `api/`) serves `/api/*`. Services and the Go runtime are in Beta on all Vercel
 plans. If a build fails with a framework error, set Project Settings > Build and Deployment >
